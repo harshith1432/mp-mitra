@@ -56,21 +56,22 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         if school_near:
             return school_near.latitude, school_near.longitude
 
-    # 4. Fallback to Taluk centroid with randomized offset
-    taluk_coords = {
-        "MADDUR": (12.5803, 77.0453),
-        "MALAVALLI": (12.3861, 77.0805),
-        "SRIRANGAPATNA": (12.4241, 76.6908),
-        "PANDAVAPURA": (12.4939, 76.6713),
-        "NAGAMANGALA": (12.8211, 76.7583),
-        "KRISHNARAJAPETE": (12.7032, 76.4912),
-        "KR PET": (12.7032, 76.4912),
-        "MANDYA": (12.5218, 76.8951)
-    }
-    
-    for k, v in taluk_coords.items():
-        if k in place_upper or place_upper in k:
-            return v[0] + random.uniform(-0.04, 0.04), v[1] + random.uniform(-0.04, 0.04)
+    # 4. Generic DB-driven district centroid as fallback
+    # Try to find any school or health centre in the district with valid coordinates
+    any_school = db_session.query(School).filter(
+        func.upper(School.district_name) == district_name,
+        School.latitude.isnot(None),
+        School.latitude != 0.0
+    ).limit(50).all()
+    if any_school:
+        import statistics
+        lats = [s.latitude for s in any_school if s.latitude]
+        lons = [s.longitude for s in any_school if s.longitude]
+        if lats and lons:
+            return (
+                statistics.mean(lats) + random.uniform(-0.2, 0.2),
+                statistics.mean(lons) + random.uniform(-0.2, 0.2)
+            )
 
     # 5. Search pincodes table as general fallback
     ref = db_session.query(Pincode).filter(
@@ -81,8 +82,8 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
     if ref:
         return ref.latitude + random.uniform(-0.15, 0.15), ref.longitude + random.uniform(-0.15, 0.15)
             
-    # Default Mandya centroid spread
-    return 12.5218 + random.uniform(-0.2, 0.2), 76.8951 + random.uniform(-0.2, 0.2)
+    # 6. Absolute geographic centre of India as last resort
+    return 20.5937 + random.uniform(-1.0, 1.0), 78.9629 + random.uniform(-1.0, 1.0)
 
 
 @router.get("/reverse")
@@ -114,14 +115,18 @@ def reverse_geocode(lat: float = Query(...), lon: float = Query(...)) -> Dict[st
 
 
 @router.get("/heatmap")
-def get_heatmap_coordinates(district: Optional[str] = Query(None), db_session=Depends(get_db)) -> List[Dict[str, Any]]:
+def get_heatmap_coordinates(
+    district: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    db_session=Depends(get_db)
+) -> List[Dict[str, Any]]:
     """
-    Returns geocoded coordinates of citizen submissions AND AI-suggested project recommendations.
-    Enriches with Taluk and Panchayat information from the Habitation database.
+    Returns geocoded coordinates of citizen submissions AND AI-suggested project recommendations
+    for the selected state and district. Enriches with Taluk and Panchayat information from the database.
     """
     coords = []
     district_name = (district or "MANDYA").strip().upper()
-    state_name = "KARNATAKA"
+    state_name = (state or "KARNATAKA").strip().upper()
 
     # 1. Fetch AI recommendations (where there is no government implementation yet)
     try:

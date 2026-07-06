@@ -4192,7 +4192,7 @@ export default function App() {
                   <GovPageBanner title="AI Priority Map & Heat Index" subtitle="Click category heatmap nodes to view detailed village deficit reports" breadcrumbs={['MP Dashboard','AI Priority Map']} />
                   <div style={{ padding:'20px 24px' }}>
                     <div className="gov-card" style={{ padding: 0, overflow: 'hidden' }}>
-                      <ConstituencyMap activeDistrict={selectedDistrict} />
+                      <ConstituencyMap activeDistrict={selectedDistrict} activeState={selectedState} />
                     </div>
                   </div>
                 </>

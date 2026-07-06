@@ -2,8 +2,23 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Search, Map as MapIcon, Layers, Compass, X, Info, Mic } from 'lucide-react';
+import districtCoordsMap from '../district_coords.json';
 
-export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
+export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState = 'KARNATAKA' }) {
+  // Resolve the map centre from the pre-built district_coords lookup table.
+  // Fallback to a geographic centre of India if the district is not found.
+  const getDistrictCenter = (state, district) => {
+    const stateKey = (state || '').trim().toUpperCase();
+    const distKey  = (district || '').trim().toUpperCase();
+    const stateMap = districtCoordsMap[stateKey] || {};
+    const coords   = stateMap[distKey];
+    if (coords && coords[0] && coords[1]) return [coords[0], coords[1]];
+    // Fallback: scan all states for this district name
+    for (const s of Object.values(districtCoordsMap)) {
+      if (s[distKey]) return [s[distKey][0], s[distKey][1]];
+    }
+    return [20.5937, 78.9629]; // Geographic centre of India
+  };
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const tileLayerRef = useRef(null);
@@ -97,35 +112,36 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
       });
   };
 
-  // 1. Fetch geocoded points
+  // 1. Fetch geocoded points (pass both state and district so the backend returns the right data)
   useEffect(() => {
-    fetch(`${API_BASE}/api/geo/heatmap?district=${activeDistrict}`)
+    const districtParam = encodeURIComponent(activeDistrict);
+    const stateParam    = encodeURIComponent(activeState);
+    fetch(`${API_BASE}/api/geo/heatmap?district=${districtParam}&state=${stateParam}`)
       .then(res => res.json())
       .then(data => {
-        setPoints(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setPoints(data);
+        } else {
+          // No data yet — render an empty map centred on the district
+          setPoints([]);
+        }
       })
       .catch(err => {
         console.error('[Map Error] Fetching coordinates failed:', err);
-        // Fallback demo coordinates
-        setPoints([
-          { lat: 12.5218, lon: 76.8951, village: 'Mandya Rural Centroid', district: 'MANDYA', state: 'KARNATAKA', category: 'Water & Sanitation', priority: 92, intensity: 0.95, summary: 'Damaged water main pipeline causing supply shortage for 450 households.', duration: '14 days ago' },
-          { lat: 12.5518, lon: 76.8651, village: 'Koppa North Habitation', district: 'MANDYA', state: 'KARNATAKA', category: 'Roads & Connectivity', priority: 85, intensity: 0.85, summary: 'Pothole-ridden road section preventing primary school bus access.', duration: '2 months ago' },
-          { lat: 12.4918, lon: 76.9251, village: 'Maddur Centroid', district: 'MANDYA', state: 'KARNATAKA', category: 'Healthcare & Welfare', priority: 78, intensity: 0.78, summary: 'Doctor vacancy at local Primary Health Center (PHC) for last 6 months.', duration: '6 months ago' },
-          { lat: 12.5318, lon: 76.9551, village: 'Besagarahalli South', district: 'MANDYA', state: 'KARNATAKA', category: 'Education & Schools', priority: 64, intensity: 0.64, summary: 'Deficit in primary school boundary wall construction, safety alert.', duration: '10 days ago' }
-        ]);
+        setPoints([]);
       });
-  }, [activeDistrict]);
+  }, [activeDistrict, activeState]);
 
-  // 2. Initialize Leaflet Map Instance
+  // 2. Initialize Leaflet Map Instance — re-centre whenever district or state changes
   useEffect(() => {
     if (!mapRef.current) return;
 
-    const center = [12.5218, 76.8951];
+    const center = getDistrictCenter(activeState, activeDistrict);
 
     if (!mapInstanceRef.current) {
       const map = L.map(mapRef.current, {
         center: center,
-        zoom: 12,
+        zoom: 10,
         zoomControl: false
       });
       
@@ -136,9 +152,9 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
       markersLayerRef.current = L.layerGroup().addTo(map);
       circlesLayerRef.current = L.layerGroup().addTo(map);
     } else {
-      mapInstanceRef.current.setView(center, 12);
+      mapInstanceRef.current.setView(center, 10);
     }
-  }, [activeDistrict]);
+  }, [activeDistrict, activeState]);
 
   // 3. Dynamically manage Tile Layer (Standard 2D Map, Satellite, Terrain)
   useEffect(() => {
@@ -211,6 +227,14 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
       marker.on('click', selectPoint);
       circle.on('click', selectPoint);
     });
+
+    // Auto-fit the map bounds to show all markers across the district
+    if (points.length > 0) {
+      try {
+        const latLngs = points.map(p => [p.lat, p.lon]);
+        mapInstanceRef.current.fitBounds(latLngs, { padding: [40, 40], maxZoom: 13 });
+      } catch (_) { /* ignore fitBounds errors */ }
+    }
   }, [points]);
 
   // 5. Handle Map Clicks for Street View Mode
