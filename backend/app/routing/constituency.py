@@ -737,7 +737,7 @@ def get_school_list(state: str, district: str, status: str = None, db: Session =
         return {
             "records": [
                 {
-                    "id": s.id,
+                    "id": s.udise_school_code,
                     "name": s.school_name,
                     "category": s.school_category,
                     "type": s.school_type,
