@@ -1,9 +1,9 @@
 {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "channel": "stable",
     "mandatory": false,
-    "notes": "Initial production release.\n- Real-time constituency dashboard\n- AI-powered grievance analysis\n- WhatsApp integration\n- Firebase authentication\n- PostgreSQL with live census data",
-    "download_url": "https://github.com/harshith1432/mp-mitra/releases/download/v1.0.0/MPMitraSetup-1.0.0-windows-x64.zip",
+    "notes": "Real-time priorities recommendations release.\n- Added AI priorities panel with HIGH, MID, LOW infrastructure deficits.\n- Integrated real-time database queries on schools, roads, health clinics, water quality, and census amenities.\n- Linked Firestore citizen complaint counts and WhatsApp messages.",
+    "download_url": "https://github.com/harshith1432/mp-mitra/releases/download/v1.1.0/MPMitraSetup-1.1.0-windows-x64.zip",
     "sha256": "",
     "release_date": "2026-07-06"
 }

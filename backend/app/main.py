@@ -12,9 +12,9 @@ START_TIME = time.time()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database.connection import Base, engine
-from app.database.crawler_manager import crawler_manager
+from app.version import VERSION
 
-app = FastAPI(title="MP Mitra: AI Decision Intelligence Platform", version="1.0.0")
+app = FastAPI(title="MP Mitra: AI Decision Intelligence Platform", version=VERSION)
 
 # Enable CORS
 app.add_middleware(
