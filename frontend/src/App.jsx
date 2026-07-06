@@ -641,63 +641,63 @@ function FunctionLevelDashboard({ selectedState, selectedDistrict, constituencyD
                 <table className="gov-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
                     <tr style={{ background: '#F0F4F8', textAlign: 'left' }}>
-                      <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>#</th>
+                      <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>#</th>
                       {selectedDept === 'water' && activeCardId === 'quality_incidents' && (
                         <>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Block</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Panchayat</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Village</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Habitation</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Contaminant Parameter</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Year</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Block</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Panchayat</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Village</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Habitation</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Contaminant Parameter</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Year</th>
                         </>
                       )}
                       {selectedDept === 'water' && activeCardId !== 'quality_incidents' && (
                         <>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Block</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Panchayat</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Village</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Habitation</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>SC Pop</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>ST Pop</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Gen Pop</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Coverage Status</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Block</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Panchayat</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Village</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Habitation</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>SC Pop</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>ST Pop</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Gen Pop</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Coverage Status</th>
                         </>
                       )}
                       {selectedDept === 'education' && (
                         <>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>School Name</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Category</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Type</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Students</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Teachers</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>PTR</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>School Name</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Category</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Type</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Students</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Teachers</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>PTR</th>
                         </>
                       )}
                       {selectedDept === 'health' && (
                         <>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Facility Name</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Facility Type</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Location Type</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Latitude</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Longitude</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Facility Name</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Facility Type</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Location Type</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Latitude</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Longitude</th>
                         </>
                       )}
                       {selectedDept === 'roads' && (
                         <>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Road Name</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Length (km)</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Outlay Cost</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Physical Status</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Stage Progress</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Road Name</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Length (km)</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Outlay Cost</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Physical Status</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Stage Progress</th>
                         </>
                       )}
                       {selectedDept === 'digital' && (
                         <>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Gram Panchayat Name</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Connectivity Status</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Port Speed</th>
-                          <th style={{ padding: '10px', fontWeight: 700, color: '#003B7A', borderBottom: '2.5px solid #DDE1E7' }}>Backhaul Link Type</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Gram Panchayat Name</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Connectivity Status</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Port Speed</th>
+                          <th style={{ padding: '10px', fontWeight: 700, color: '#FFFFFF', borderBottom: '2.5px solid rgba(255,255,255,0.2)' }}>Backhaul Link Type</th>
                         </>
                       )}
                     </tr>
