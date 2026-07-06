@@ -387,3 +387,83 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 ```
+
+---
+
+## 🏛️ Systems Architecture & Technical Manual
+
+This section outlines the detailed systems integration, AI components, and data structures.
+
+### 1. Data and Control Flow Diagram
+
+```mermaid
+graph TD
+    %% Client Interfaces
+    subgraph Clients [Client Layer]
+        FIREBASE_WEB[Firebase Web App: mp-mitra-7e6d9.web.app]
+        LOCAL_VITE[Local Vite Dev Server: localhost:5173]
+        CLI_BINARY[Local CLI Console Wrapper: mpmitra.exe]
+    end
+
+    %% Routing & API Gateway
+    subgraph Gateway [API Layer - FastAPI]
+        ROUTE_CITIZEN[citizen.py - Complaint Ingestion]
+        ROUTE_MAP[geo.py - Geospatial heatmap & recommended pins]
+        ROUTE_COPI[copilot.py - Chat & Search API]
+        ROUTE_OPT[prioritize.py - PuLP ILP Optimization & SHAP]
+    end
+
+    %% Database & Vectors
+    subgraph Storage [Persistence Layer]
+        PG[(PostgreSQL / SQLite Database)]
+        FIRESTORE[(Firebase Cloud Firestore)]
+        CHROMA[(ChromaDB Vector Store)]
+    end
+
+    %% AI Pipeline
+    subgraph AI_Agents [Multi-Agent Reasoning Core]
+        YOLO[YOLOv11 Object Defect Classifier]
+        VLM[Qwen2-VL / Tesseract Document OCR]
+        RAG[SentenceTransformers Policy Advisor]
+        SHAP[SHAP Explainable AI Attribution]
+    end
+
+    %% Interactions
+    FIREBASE_WEB & LOCAL_VITE & CLI_BINARY -->|HTTPS API Requests / CORS Verified| Gateway
+    
+    Gateway -->|Read/Write| Storage
+    ROUTE_CITIZEN -->|Image scan| YOLO
+    ROUTE_CITIZEN -->|Document scan| VLM
+    ROUTE_COPI -->|Embeddings Query| CHROMA
+    ROUTE_OPT -->|Feature Importance| SHAP
+```
+
+### 2. Deep-Dive AI Pipeline Specifications
+
+The platform is powered by specialized AI agents running on the backend:
+
+* ** Indic Translation Agent**: Whisper (STT) + Llama-3.1 model. Translates voice notes and regional text inputs from 22 official Indic languages into standardized English.
+* ** YOLOv11 Object Defect Agent**: Fine-tuned computer vision model. Scans photos uploaded by citizens (potholes, garbage, broken streetlights) to output coordinate locations and damage class categories.
+* ** OCR & VLM document Scanner**: Qwen2-VL and Tesseract OCR model. Instantly ingests papers, official letters, and panchayat minutes to parse scopes and connect budgets.
+* ** TF-IDF Duplicate Agent**: Pure Python Jaccard similarity and Cosine Similarity models. Consolidates similar citizen reports to trace local trend events and prevent spam.
+* ** RAG Policy Advisor Agent**: ChromaDB vector database and Llama model. Compares proposed projects against Central guidelines (JJM, PMGSY) and returns citation-backed advisories.
+* ** Knapsack ILP Portfolio Optimizer**: Mixed Integer Linear Programming (PuLP). Maximizes overall developmental impact score under the representative's budget constraints.
+* ** SHAP Explainable AI Agent**: Shapley additive explanations model. Breaks down and calculates percentage attributions (Demand, Urgency, Cost) explaining why a project was prioritized.
+
+### 3. Database Schema & Government Sources
+
+The platform synchronizes offline national datasets with crawled online data:
+
+* **`pincodes`**: All-India directory of pincodes mapping post offices to geospatial coordinates.
+* **`schools`**: National UDISE census. Tracks pupil-teacher ratios, school types, student strength, and coordinates.
+* **`roads`**: Pradhan Mantri Gram Sadak Yojana (PMGSY) database. Tracks connectivity, surface materials, and costs.
+* **`health_centres`**: National Health Portal directory. Evaluates clinic coverage density per 10,000 citizens.
+* **`habitations`**: Census population data combined with Jal Jeevan Mission (JJM) records. Tracks tap-water connectivity.
+* **`water_quality_records`**: Contaminant parameters (Fluoride, Arsenic, Salinity) tracked by gram panchayats.
+* **`village_amenities`**: Village amenities directories. Tracks general infrastructure gaps.
+
+### 4. Environments & Execution Modes
+
+* **Local Machine Development**: The React UI runs via Vite dev server on port `5173` proxying `/api` calls. The backend runs FastAPI on port `8000` via Uvicorn. Local databases fall back automatically to SQLite (`mpmitra_fallback.db`).
+* **Production Cloud Hosting**: The React client is hosted on Firebase Hosting (delivering optimized static pages), and makes credential-safe CORS requests to the Python containers on Render.com. The backend queries data from a remote serverless PostgreSQL database on Neon.
+* **CLI Execution**: Packaged as a standalone command `mpmitra` using PyInstaller. The CLI initializes local databases, boots the Python Uvicorn engine, and manages logs, self-tests, and updates.
