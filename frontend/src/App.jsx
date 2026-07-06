@@ -3300,37 +3300,37 @@ export default function App() {
 
   const sidebarColor = isMp ? '#FF6B1A' : isOfficer ? '#138808' : '#C62B2B';
   const sidebarBg = isMp ? '#FFF3EC' : isOfficer ? '#EAF6EA' : '#FDECEA';
-  const portalName = isMp ? 'MP Dashboard' : isOfficer ? 'Officer Portal' : 'Admin Console';
+  const portalName = isMp ? t('header.official_portal') : isOfficer ? t('header.officer_portal') : t('header.admin_portal');
 
   const mpNav = [
-    {id:'home', label:'Dashboard Home', icon:LayoutDashboard},
-    {id:'digital_twin', label:'Constituency Digital Twin', icon:Map},
-    {id:'research_engine', label:'AI Research Engine', icon:Globe},
-    {id:'function_level', label:'Function Level', icon:SlidersHorizontal},
-    {id:'search_projects', label:'Village Census & Quality', icon:Search},
-    {id:'map', label:'AI Priority Map', icon:MapPin},
-    {id:'recommendations', label:'AI Recommendations', icon:Sparkles},
-    {id:'gaps', label:'Infrastructure Gaps', icon:Activity},
-    {id:'chat', label:'AI Advisor Chat', icon:Bot},
-    {id:'optimizer', label:'Budget Optimizer', icon:SlidersHorizontal},
-    {id:'tracking', label:'Project Tracking', icon:Briefcase},
-    {id:'news', label:'News Intelligence', icon:Globe},
-    {id:'crawled_data', label:'Web Scraper Database', icon:Database},
-    {id:'reports', label:'Reports & Exports', icon:FileDown},
+    {id:'home', label:t('nav.dashboard'), icon:LayoutDashboard},
+    {id:'digital_twin', label:t('nav.digital_twin'), icon:Map},
+    {id:'research_engine', label:t('nav.research'), icon:Globe},
+    {id:'function_level', label:t('nav.function_level'), icon:SlidersHorizontal},
+    {id:'search_projects', label:t('nav.search_projects'), icon:Search},
+    {id:'map', label:t('nav.map'), icon:MapPin},
+    {id:'recommendations', label:t('nav.recommendations'), icon:Sparkles},
+    {id:'gaps', label:t('nav.gaps'), icon:Activity},
+    {id:'chat', label:t('nav.chat'), icon:Bot},
+    {id:'optimizer', label:t('nav.optimizer'), icon:SlidersHorizontal},
+    {id:'tracking', label:t('nav.tracking'), icon:Briefcase},
+    {id:'news', label:t('nav.news'), icon:Globe},
+    {id:'crawled_data', label:t('nav.crawled_data'), icon:Database},
+    {id:'reports', label:t('nav.reports'), icon:FileDown},
   ];
   const officerNav = [
-    {id:'home', label:'Assigned Projects', icon:LayoutDashboard},
-    {id:'inspections', label:'Inspection Schedule', icon:Calendar},
-    {id:'tasks', label:'Pending Tasks', icon:ListTodo},
-    {id:'photos', label:'Field Uploads', icon:Camera},
+    {id:'home', label:t('officer.home.title'), icon:LayoutDashboard},
+    {id:'inspections', label:t('officer.inspections'), icon:Calendar},
+    {id:'tasks', label:t('officer.tasks'), icon:ListTodo},
+    {id:'photos', label:t('officer.photos'), icon:Camera},
   ];
   const adminNav = [
-    {id:'admin', label:'Dataset Ingestion', icon:Upload},
-    {id:'datasets', label:'Intelligent Dataset Manager', icon:Database},
-    {id:'scraper', label:'AI Web Scraper', icon:Globe},
-    {id:'users', label:'User Access Control', icon:Users},
-    {id:'models', label:'AI Models Health', icon:Activity},
-    {id:'audit', label:'Audit System Logs', icon:Database},
+    {id:'admin', label:t('nav.admin'), icon:Upload},
+    {id:'datasets', label:t('admin.datasets'), icon:Database},
+    {id:'scraper', label:t('admin.scraper'), icon:Globe},
+    {id:'users', label:t('admin.users'), icon:Users},
+    {id:'models', label:t('admin.system_health'), icon:Activity},
+    {id:'audit', label:t('admin.audit'), icon:Database},
   ];
   const currentNav = isMp ? mpNav : isOfficer ? officerNav : adminNav;
 
@@ -3351,8 +3351,8 @@ export default function App() {
                   // LOCKED VIEW — shows current selection with edit button
                   <div style={{ background:'white', border:'1px solid #FDDCCA', borderRadius:'8px', padding:'10px 12px' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
-                      <span style={{ fontSize:'10px', fontWeight:700, textTransform:'uppercase', color:'#FF6B1A', letterSpacing:'0.05em' }}>📍 My Constituency</span>
-                      <button onClick={()=>setMpConstituencyLocked(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'10px', color:'#003B7A', fontWeight:700, padding:'2px 6px', borderRadius:'4px', background:'#EEF3FA' }}>✏️ Edit</button>
+                      <span style={{ fontSize:'10px', fontWeight:700, textTransform:'uppercase', color:'#FF6B1A', letterSpacing:'0.05em' }}>📍 {t('dashboard.constituency')}</span>
+                      <button onClick={()=>setMpConstituencyLocked(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'10px', color:'#003B7A', fontWeight:700, padding:'2px 6px', borderRadius:'4px', background:'#EEF3FA' }}>✏️ {t('dashboard.edit')}</button>
                     </div>
                     <div style={{ fontSize:'13px', fontWeight:800, color:'#1a1a1a', lineHeight:1.2 }}>{selectedDistrict}</div>
                     <div style={{ fontSize:'11px', color:'#6B6B6B', marginTop:'2px' }}>{selectedState}</div>
@@ -3360,7 +3360,7 @@ export default function App() {
                 ) : (
                   // EDIT MODE — shows dropdowns with a lock/save button
                   <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-                    <div style={{ fontSize:'10px', fontWeight:700, textTransform:'uppercase', color:'#FF6B1A', letterSpacing:'0.05em', marginBottom:'2px' }}>Select Constituency</div>
+                    <div style={{ fontSize:'10px', fontWeight:700, textTransform:'uppercase', color:'#FF6B1A', letterSpacing:'0.05em', marginBottom:'2px' }}>{t('dashboard.select_constituency')}</div>
                     <select value={selectedState} onChange={e=>handleStateChange(e.target.value)} className="gov-input" style={{ fontSize:'12px', padding:'7px 10px' }}>
                       {states.map(s=><option key={s} value={s}>{s}</option>)}
                     </select>
@@ -3370,7 +3370,7 @@ export default function App() {
                         : <option value={selectedDistrict}>{selectedDistrict}</option>
                       }
                     </select>
-                    <button onClick={()=>setMpConstituencyLocked(true)} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', padding:'8px', background:'#FF6B1A', color:'white', border:'none', borderRadius:'6px', fontSize:'12px', fontWeight:700, cursor:'pointer' }}>🔒 Lock &amp; Save</button>
+                    <button onClick={()=>setMpConstituencyLocked(true)} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', padding:'8px', background:'#FF6B1A', color:'white', border:'none', borderRadius:'6px', fontSize:'12px', fontWeight:700, cursor:'pointer' }}>🔒 {t('dashboard.save')}</button>
                   </div>
                 )}
               </div>
@@ -3432,24 +3432,24 @@ export default function App() {
 
                 return (
                   <>
-                    <GovPageBanner title="Constituency Digital Twin Dashboard" subtitle={`Active Area: ${selectedDistrict}, ${selectedState} — AI-integrated intelligence summary`} breadcrumbs={['MP Dashboard','Home']} />
+                    <GovPageBanner title={t('banner.dashboard.title')} subtitle={`${t('submit.district')}: ${selectedDistrict}, ${t('submit.state')}: ${selectedState} — ${t('banner.dashboard.subtitle')}`} breadcrumbs={[t('header.official_portal'), t('nav.home')]} />
                     <div style={{ padding:'24px 28px', display:'grid', gap:'20px' }}>
                       <div className="gov-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'14px' }}>
-                        <StatCard label="Health Score" value={`${constituencyData?.health_score||82}/100`} color="#003B7A" icon={Activity} />
-                        <StatCard label="AI Deficits Today" value={`${totalDeficits} Deficits`} color="#FF6B1A" icon={Sparkles} sub={totalDeficits > 0 ? `${ptrDeficitCount} School / ${clinicDeficitCount} Clinic gaps` : "All sectors optimal"} />
-                        <StatCard label="Citizen Suggestions" value={firestoreComplaints.length.toLocaleString()} color="#138808" icon={Users} sub={`💬 ${whatsappCount} WhatsApp / 💻 ${webCount} Web`} />
-                        <StatCard label="Completed Projects" value={constituencyData?.metrics?.roads?.completed || 0} color="#003B7A" icon={CheckCircle2} sub={`Out of ${constituencyData?.metrics?.roads?.count || 0} Road Projects`} />
-                        <StatCard label="Risk Alerts" value={`${totalRiskAlerts} Active`} color="#C62B2B" icon={AlertCircle} sub={totalRiskAlerts > 0 ? `${criticalAlerts.length} High Urgency / ${waterQualityIssues} Water Gaps` : "No active warnings"} />
+                        <StatCard label={t('dashboard.health_score')} value={`${constituencyData?.health_score||82}/100`} color="#003B7A" icon={Activity} />
+                        <StatCard label={t('dashboard.ai_deficits')} value={`${totalDeficits}`} color="#FF6B1A" icon={Sparkles} sub={totalDeficits > 0 ? t('dashboard.school_clinic_gaps', { schools: ptrDeficitCount, clinics: clinicDeficitCount }) : t('dashboard.no_deficits')} />
+                        <StatCard label={t('dashboard.complaints')} value={firestoreComplaints.length.toLocaleString()} color="#138808" icon={Users} sub={t('dashboard.whatsapp_web_stat', { whatsapp: whatsappCount, web: webCount })} />
+                        <StatCard label={t('dashboard.completed_projects')} value={constituencyData?.metrics?.roads?.completed || 0} color="#003B7A" icon={CheckCircle2} sub={t('dashboard.out_of_roads', { total: constituencyData?.metrics?.roads?.count || 0 })} />
+                        <StatCard label={t('dashboard.risk_alerts')} value={`${totalRiskAlerts}`} color="#C62B2B" icon={AlertCircle} sub={totalRiskAlerts > 0 ? t('dashboard.high_urgency_water', { high: criticalAlerts.length, water: waterQualityIssues }) : t('dashboard.no_risk')} />
                       </div>
 
                       <div className="gov-grid-split" style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'20px' }}>
                         <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
                           {/* Ask AI */}
                           <div className="gov-card" style={{ padding:'24px' }}>
-                            <SectionHeader title="Ask AI Decision Advisor" subtitle="Get evidence-based investment recommendations" />
+                            <SectionHeader title={t('dashboard.ask_advisor')} subtitle={t('dashboard.get_recommendations')} />
                             <form onSubmit={askCopilot} style={{ display:'flex', gap:'8px' }}>
                               <input type="text" value={copilotQuery} onChange={e=>setCopilotQuery(e.target.value)} placeholder="e.g. Which ₹5 crore investment benefits most citizens?" className="gov-input" style={{ flex:1 }} />
-                              <button type="submit" className="gov-btn gov-btn--saffron"><Bot size={15} /> Ask AI</button>
+                              <button type="submit" className="gov-btn gov-btn--saffron"><Bot size={15} /> {t('dashboard.ask_ai_btn')}</button>
                             </form>
                             {copilotHistory.slice(-1).map((m,i)=>(
                               m.sender==='bot' && m !== copilotHistory[0] && (
@@ -3460,11 +3460,11 @@ export default function App() {
 
                           {/* Live Citizen Suggestions Feed */}
                           <div className="gov-card" style={{ padding:'24px', display:'flex', flexDirection:'column', gap:'12px' }}>
-                            <SectionHeader title="📥 Live Citizen Suggestions & Grievance Feed" subtitle="Real-time incoming requests from WhatsApp and Web Kiosk channels" />
+                            <SectionHeader title={t('dashboard.live_feed')} subtitle={t('dashboard.live_feed_desc')} />
                             
                             {firestoreComplaints.length === 0 ? (
                               <div style={{ textAlign:'center', padding:'30px', color:'#6B6B6B', fontSize:'13px' }}>
-                                📭 No active suggestions filed in {selectedDistrict} yet. Use the WhatsApp Simulator to send a message!
+                                {t('dashboard.no_complaints')}
                               </div>
                             ) : (
                               <div style={{ display:'flex', flexDirection:'column', gap:'12px', maxHeight:'400px', overflowY:'auto', paddingRight:'4px' }}>
@@ -3472,15 +3472,15 @@ export default function App() {
                                   <div key={c.id || i} style={{ padding:'14px', background:'#F8FAFC', border:'1px solid #E2E8F0', borderRadius:'8px', position:'relative' }}>
                                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
                                       <span style={{ fontSize:'10px', fontWeight:700, padding:'3px 8px', borderRadius:'12px', background: c.whatsapp_sim ? '#E2F7E3' : '#E2EEFC', color: c.whatsapp_sim ? '#138808' : '#003B7A', textTransform:'uppercase' }}>
-                                        {c.whatsapp_sim ? '💬 WhatsApp Suggestion' : '💻 Web Kiosk'}
+                                        {c.whatsapp_sim ? t('dashboard.whatsapp_suggestion') : t('dashboard.web_kiosk')}
                                       </span>
-                                      <span style={{ fontSize:'10px', color:'#999' }}>{c.date || 'Recent'}</span>
+                                      <span style={{ fontSize:'10px', color:'#999' }}>{c.date || t('dashboard.recent')}</span>
                                     </div>
                                     <p style={{ fontSize:'12.5px', color:'#1a1a1a', fontWeight:500, margin:'0 0 10px 0', lineHeight:1.5 }}>"{c.text}"</p>
                                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #EDF2F7', paddingTop:'8px', fontSize:'11px', color:'#6B6B6B' }}>
-                                      <span>📍 Village: <strong style={{ color:'#1a1a1a' }}>{c.village || 'General Area'}</strong></span>
-                                      <span>Category: <strong style={{ color:'#1a1a1a' }}>{c.category}</strong></span>
-                                      <span className="gov-badge" style={{ background: c.urgency?.toLowerCase() === 'high' || c.urgency?.toLowerCase() === 'critical' ? '#FFF5F5' : '#F7FAFC', color: c.urgency?.toLowerCase() === 'high' || c.urgency?.toLowerCase() === 'critical' ? '#E53E3E' : '#4A5568' }}>{c.urgency}</span>
+                                      <span>📍 {t('dashboard.village')}: <strong style={{ color:'#1a1a1a' }}>{c.village || 'General Area'}</strong></span>
+                                      <span>{t('dashboard.category')}: <strong style={{ color:'#1a1a1a' }}>{c.category}</strong></span>
+                                      <span className="gov-badge" style={{ background: c.urgency?.toLowerCase() === 'high' || c.urgency?.toLowerCase() === 'critical' ? '#FFF5F5' : '#F7FAFC', color: c.urgency?.toLowerCase() === 'high' || c.urgency?.toLowerCase() === 'critical' ? '#E53E3E' : '#4A5568' }}>{t(c.urgency?.toLowerCase() || 'medium', { defaultValue: c.urgency })}</span>
                                     </div>
                                   </div>
                                 ))}
@@ -3493,10 +3493,10 @@ export default function App() {
                           {/* Most Demanded Categories Chart */}
                           <div className="gov-card" style={{ padding:'24px' }}>
                             <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'14px', fontWeight:700, color:'#003B7A', marginBottom:'14px', paddingBottom:'8px', borderBottom:'1px solid #DDE1E7' }}>
-                              🎯 Most Demanded Sectors
+                              {t('dashboard.demanded_sectors')}
                             </div>
                             {sortedCategories.length === 0 ? (
-                              <div style={{ fontSize:'12px', color:'#6B6B6B', padding:'10px 0' }}>No demand data available yet.</div>
+                              <div style={{ fontSize:'12px', color:'#6B6B6B', padding:'10px 0' }}>{t('common.no_data')}</div>
                             ) : (
                               <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
                                 {sortedCategories.map(([cat, count]) => {
@@ -3506,7 +3506,7 @@ export default function App() {
                                   return (
                                     <div key={cat}>
                                       <div style={{ display:'flex', justifyContent:'space-between', fontSize:'11.5px', fontWeight:700, color:'#1a1a1a', marginBottom:'4px' }}>
-                                        <span>{cat}</span>
+                                        <span>{t(cat.toLowerCase().replace(' ', '_').replace('&', 'and'), { defaultValue: cat })}</span>
                                         <span>{count} ({pct}%)</span>
                                       </div>
                                       <div className="gov-progress-bar" style={{ height:'6px' }}>
@@ -3521,10 +3521,10 @@ export default function App() {
 
                           {/* Active Risk Alerts */}
                           <div className="gov-card" style={{ padding:'24px' }}>
-                            <SectionHeader title="Active Risk Alerts" accent="#C62B2B" />
+                            <SectionHeader title={t('dashboard.active_risk_alerts')} accent="#C62B2B" />
                             <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
                               {criticalAlerts.length === 0 && waterQualityIssues === 0 ? (
-                                <div style={{ fontSize:'12px', color:'#6B6B6B', textAlign:'center', padding:'10px 0' }}>✅ No critical risk alerts reported.</div>
+                                <div style={{ fontSize:'12px', color:'#6B6B6B', textAlign:'center', padding:'10px 0' }}>{t('dashboard.no_risk')}</div>
                               ) : (
                                 <>
                                   {/* Water Quality Alerts */}

@@ -2,12 +2,10 @@
   "app.name": "MP MITRA",
   "app.tagline": "National AI Governance Intelligence Platform",
   "app.exit": "Exit",
-
   "header.citizen_portal": "Citizen Services Portal",
   "header.official_portal": "MP Official Portal",
   "header.officer_portal": "Field Officer Portal",
   "header.admin_portal": "System Administrator",
-
   "nav.home": "Home",
   "nav.submit": "Submit Suggestion",
   "nav.assistant": "AI Assistant",
@@ -38,7 +36,6 @@
   "nav.users": "User Management",
   "nav.models": "AI Models",
   "nav.audit": "Audit Log",
-
   "banner.home.title": "Welcome, {{name}}!",
   "banner.home.subtitle": "Your gateway to local governance — submit suggestions, track progress, and access government welfare programmes.",
   "banner.submit.title": "Submit Development Suggestion",
@@ -55,7 +52,6 @@
   "banner.dashboard.subtitle": "Real-time overview of your constituency's development indicators.",
   "banner.optimizer.title": "MPLADS Budget Optimizer",
   "banner.optimizer.subtitle": "AI-powered budget allocation to maximise constituency development impact.",
-
   "citizen.home.greeting": "Namaste, {{name}}!",
   "citizen.home.desc": "You are connected to the MP Mitra Citizen Portal. Use the navigation above to submit development suggestions, track their progress, or access government welfare schemes.",
   "citizen.home.stat_complaints": "Active Complaints",
@@ -63,7 +59,6 @@
   "citizen.home.stat_projects": "Ongoing Projects",
   "citizen.home.stat_resolved": "Resolved This Month",
   "citizen.home.recent_updates": "Recent Updates in Your Area",
-
   "submit.location": "Select Your Location",
   "submit.state": "State",
   "submit.district": "District",
@@ -85,12 +80,10 @@
   "submit.category_detected": "Category Detected",
   "submit.language_detected": "Language Detected",
   "submit.ai_reasoning": "AI Reasoning",
-
   "assistant.placeholder": "Ask me about local infrastructure, schemes, or your area...",
   "assistant.send": "Send",
   "assistant.thinking": "Thinking...",
   "assistant.greeting": "Namaste! I am your Citizen AI Assistant. Ask me about local water projects, schools, government schemes, or how to track your suggestions.",
-
   "track.enter_ticket": "Enter your Ticket ID to track status",
   "track.search": "Search",
   "track.not_found": "Ticket not found",
@@ -99,7 +92,6 @@
   "track.verified": "Verified",
   "track.in_progress": "In Progress",
   "track.resolved": "Resolved",
-
   "schemes.income": "Monthly Household Income (₹)",
   "schemes.occupation": "Occupation",
   "schemes.find_btn": "Find My Eligible Schemes",
@@ -108,7 +100,6 @@
   "schemes.apply": "Apply / Learn More",
   "schemes.eligibility": "Eligibility",
   "schemes.ministry": "Ministry",
-
   "dashboard.overall_score": "Overall Health Score",
   "dashboard.population": "Total Population",
   "dashboard.sc_st": "SC/ST Share",
@@ -123,7 +114,6 @@
   "dashboard.high_priority": "High Priority",
   "dashboard.view_all": "View All",
   "dashboard.refresh": "Refresh",
-
   "optimizer.budget": "Total Budget (₹ Crores)",
   "optimizer.optimize_btn": "Optimise Portfolio",
   "optimizer.optimizing": "Running ILP Optimisation...",
@@ -141,12 +131,10 @@
   "optimizer.urgency": "Urgency",
   "optimizer.cost_factor": "Cost Efficiency",
   "optimizer.gap": "Infrastructure Gap",
-
   "copilot.placeholder": "Ask about constituency needs, investment gaps, or village priorities...",
   "copilot.send": "Ask AI Advisor",
   "copilot.thinking": "Researching...",
   "copilot.greeting": "Constituency Digital Twin Advisor ready. Ask me how to invest your MPLADS budget, identify development gaps, or retrieve village priority indices.",
-
   "function.water": "Water Supply",
   "function.education": "Primary Education",
   "function.health": "Primary Healthcare",
@@ -156,14 +144,12 @@
   "function.high": "High Compliance",
   "function.moderate": "Moderate Gaps",
   "function.critical": "Critical Deficit",
-
   "news.latest": "Latest News",
   "news.loading": "Loading news...",
   "news.no_news": "No news items found.",
   "news.read_more": "Read More",
   "news.severity": "Severity",
   "news.source": "Source",
-
   "intel.schemes": "Welfare Schemes",
   "intel.news": "Local News",
   "intel.tenders": "Tenders",
@@ -171,14 +157,12 @@
   "intel.ministry": "Ministry",
   "intel.deadline": "Deadline",
   "intel.view_details": "View Details",
-
   "status.online": "Online",
   "status.offline": "Offline",
   "status.loading": "Loading...",
   "status.error": "Error",
   "status.success": "Success",
   "status.pending": "Pending",
-
   "common.select": "Select",
   "common.search": "Search",
   "common.close": "Close",
@@ -194,14 +178,12 @@
   "common.no": "No",
   "common.or": "or",
   "common.all": "All",
-
   "lang.selector_label": "Language",
   "lang.change": "Change Language",
   "lang.south_india": "South India",
   "lang.north_india": "North India",
   "lang.west_india": "West India",
   "lang.east_india": "East India",
-
   "auth.login": "Login",
   "auth.logout": "Logout",
   "auth.email": "Email Address",
@@ -219,7 +201,6 @@
   "auth.admin_desc": "User management, system configuration, audit logs",
   "auth.back_to_portals": "Back to Portal Selection",
   "auth.google_signin": "Continue with Google",
-
   "gap.title": "Infrastructure Gap Analysis",
   "gap.subtitle": "Identify underserved areas by comparing infrastructure supply vs. population demand.",
   "gap.school_gap": "School Gap",
@@ -230,7 +211,6 @@
   "gap.benchmark": "National Benchmark",
   "gap.current": "Current Level",
   "gap.deficit": "Deficit",
-
   "tracking.title": "Project Progress Tracker",
   "tracking.active": "Active Projects",
   "tracking.completed": "Completed",
@@ -241,7 +221,6 @@
   "tracking.last_update": "Last Updated",
   "tracking.photo_evidence": "Photo Evidence",
   "tracking.add_update": "Add Progress Update",
-
   "reports.title": "Reports & Analytics",
   "reports.generate": "Generate Report",
   "reports.constituency_overview": "Constituency Overview Report",
@@ -253,7 +232,6 @@
   "reports.date_range": "Date Range",
   "reports.from": "From",
   "reports.to": "To",
-
   "admin.users": "User Management",
   "admin.add_user": "Add User",
   "admin.role": "Role",
@@ -266,7 +244,6 @@
   "admin.models": "AI Model Configuration",
   "admin.audit": "Audit Log",
   "admin.system_health": "System Health",
-
   "officer.home.title": "Field Officer Dashboard",
   "officer.inspections": "Site Inspections",
   "officer.tasks": "My Tasks",
@@ -276,5 +253,41 @@
   "officer.village": "Village",
   "officer.project": "Project",
   "officer.observation": "Field Observation",
-  "officer.upload_photo": "Upload Site Photo"
+  "officer.upload_photo": "Upload Site Photo",
+  "dashboard.health_score": "Health Score",
+  "dashboard.ai_deficits": "AI Deficits Today",
+  "dashboard.completed_projects": "Completed Projects",
+  "dashboard.risk_alerts": "Risk Alerts",
+  "dashboard.ask_advisor": "Ask AI Decision Advisor",
+  "dashboard.get_recommendations": "Get evidence-based investment recommendations",
+  "dashboard.live_feed": "📥 Live Citizen Suggestions & Grievance Feed",
+  "dashboard.live_feed_desc": "Real-time incoming requests from WhatsApp and Web Kiosk channels",
+  "dashboard.demanded_sectors": "🎯 Most Demanded Sectors",
+  "dashboard.active_risk_alerts": "Active Risk Alerts",
+  "dashboard.no_deficits": "All sectors optimal",
+  "dashboard.no_risk": "✅ No critical risk alerts reported.",
+  "dashboard.school_clinic_gaps": "{{schools}} School / {{clinics}} Clinic gaps",
+  "dashboard.whatsapp_web_stat": "💬 {{whatsapp}} WhatsApp / 💻 {{web}} Web",
+  "dashboard.out_of_roads": "Out of {{total}} Road Projects",
+  "dashboard.high_urgency_water": "{{high}} High Urgency / {{water}} Water Gaps",
+  "dashboard.no_complaints": "📭 No active suggestions filed in this area yet.",
+  "dashboard.ask_ai_btn": "Ask AI",
+  "dashboard.pothole": "Pothole",
+  "dashboard.broken_light": "Broken Light",
+  "dashboard.garbage": "Garbage",
+  "dashboard.water_leakage": "Water Leakage",
+  "dashboard.whatsapp_suggestion": "💬 WhatsApp Suggestion",
+  "dashboard.web_kiosk": "💻 Web Kiosk",
+  "dashboard.recent": "Recent",
+  "dashboard.village": "Village",
+  "dashboard.category": "Category",
+  "dashboard.urgency": "Urgency",
+  "dashboard.constituency": "Constituency",
+  "dashboard.edit": "Edit",
+  "dashboard.save": "Save",
+  "dashboard.select_constituency": "Select Constituency",
+  "high": "High",
+  "critical": "Critical",
+  "medium": "Medium",
+  "low": "Low"
 }

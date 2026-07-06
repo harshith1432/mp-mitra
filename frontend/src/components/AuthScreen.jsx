@@ -4,8 +4,10 @@ import {
   signInWithPopup, googleProvider, doc, setDoc, getDoc
 } from '../firebase';
 import { Mail, Lock, User, RefreshCw, ArrowLeft, ChevronRight } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
+  const { t } = useLanguage();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,11 +16,11 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
   const [loading, setLoading] = useState(false);
 
   const portalConfig = {
-    citizen:  { title: 'Citizen Services Portal',  subtitle: 'Submit Development Suggestions & Track Resolutions', color: '#003B7A', bgColor: '#EEF3FA',  emoji: '👥', role: 'Citizen' },
-    official: { title: 'MP Dashboard Portal',       subtitle: 'Constituency Digital Twin & AI Budget Planning',    color: '#FF6B1A', bgColor: '#FFF3EC',  emoji: '🏛️', role: 'MP' },
-    officer:  { title: 'Officer Execution Portal',  subtitle: 'Project Compliance & Field Reporting Console',     color: '#138808', bgColor: '#EAF6EA',  emoji: '⚙️', role: 'Officer' },
-    admin:    { title: 'Admin System Console',      subtitle: 'Dataset Ingestion & AI Pipeline Management',      color: '#C62B2B', bgColor: '#FDECEA',  emoji: '🛡️', role: 'Admin' },
-  }[portal] || { title: 'MP Mitra Portal', subtitle: 'Government AI Platform', color: '#003B7A', bgColor: '#EEF3FA', emoji: '🇮🇳', role: 'Citizen' };
+    citizen:  { title: t('header.citizen_portal'),  subtitle: t('auth.citizen_desc'), color: '#003B7A', bgColor: '#EEF3FA',  emoji: '👥', role: 'Citizen' },
+    official: { title: t('header.official_portal'), subtitle: t('auth.official_desc'), color: '#FF6B1A', bgColor: '#FFF3EC',  emoji: '🏛️', role: 'MP' },
+    officer:  { title: t('header.officer_portal'),  subtitle: t('auth.officer_desc'), color: '#138808', bgColor: '#EAF6EA',  emoji: '⚙️', role: 'Officer' },
+    admin:    { title: t('header.admin_portal'),    subtitle: t('auth.admin_desc'), color: '#C62B2B', bgColor: '#FDECEA',  emoji: '🛡️', role: 'Admin' },
+  }[portal] || { title: t('app.name'), subtitle: t('app.tagline'), color: '#003B7A', bgColor: '#EEF3FA', emoji: '🇮🇳', role: 'Citizen' };
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -78,12 +80,12 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ width: '40px', height: '40px', background: 'white', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🇮🇳</div>
             <div>
-              <div style={{ color: 'white', fontWeight: 800, fontSize: '18px', lineHeight: 1 }}>MP MITRA</div>
-              <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.07em' }}>National AI Governance Intelligence Platform</div>
+              <div style={{ color: 'white', fontWeight: 800, fontSize: '18px', lineHeight: 1 }}>{t('app.name')}</div>
+              <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{t('app.tagline')}</div>
             </div>
           </div>
           <button onClick={onBackToPortals} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', color: 'white', padding: '8px 14px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-            <ArrowLeft size={14} /> Back to Portals
+            <ArrowLeft size={14} /> {t('auth.back_to_portals')}
           </button>
         </div>
         <div style={{ display: 'flex', height: '3px' }}>
@@ -95,9 +97,9 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
 
       {/* Breadcrumb */}
       <div className="gov-breadcrumb" style={{ background: 'white', borderBottom: '1px solid #DDE1E7', padding: '12px 40px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#6B6B6B' }}>
-        <span style={{ color: '#003B7A', cursor: 'pointer' }} onClick={onBackToPortals}>Home</span>
+        <span style={{ color: '#003B7A', cursor: 'pointer' }} onClick={onBackToPortals}>{t('nav.home')}</span>
         <ChevronRight size={12} />
-        <span style={{ color: '#003B7A', cursor: 'pointer' }} onClick={onBackToPortals}>Portal Selection</span>
+        <span style={{ color: '#003B7A', cursor: 'pointer' }} onClick={onBackToPortals}>{t('auth.select_portal')}</span>
         <ChevronRight size={12} />
         <span style={{ fontWeight: 600, color: '#1a1a1a' }}>{portalConfig.title}</span>
       </div>
@@ -117,10 +119,10 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
           {/* Auth Card */}
           <div style={{ background: 'white', border: '1px solid #DDE1E7', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1a1a1a', margin: '0 0 4px', fontFamily: 'Space Grotesk, sans-serif' }}>
-              {isRegister ? 'Create Account' : 'Sign In'}
+              {isRegister ? t('auth.create_account', { defaultValue: 'Create Account' }) : t('auth.sign_in')}
             </h2>
             <p style={{ fontSize: '13px', color: '#6B6B6B', margin: '0 0 24px' }}>
-              {isRegister ? 'Register your credentials to access the portal.' : 'Enter your credentials to access your portal.'}
+              {isRegister ? t('auth.register_credentials_desc', { defaultValue: 'Register your credentials to access the portal.' }) : t('auth.credentials_desc', { defaultValue: 'Enter your credentials to access your portal.' })}
             </p>
 
             {error && (
@@ -132,16 +134,16 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
             <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {isRegister && (
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B6B6B', marginBottom: '6px' }}>Full Name</label>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B6B6B', marginBottom: '6px' }}>{t('auth.full_name', { defaultValue: 'Full Name' })}</label>
                   <div style={{ position: 'relative' }}>
                     <User size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
-                    <input type="text" value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Your full name" style={{ display: 'block', width: '100%', padding: '10px 14px 10px 36px', background: 'white', border: '1.5px solid #DDE1E7', borderRadius: '6px', fontSize: '13px', color: '#1a1a1a', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }} onFocus={e=>e.target.style.borderColor='#003B7A'} onBlur={e=>e.target.style.borderColor='#DDE1E7'} />
+                    <input type="text" value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder={t('auth.full_name_placeholder', { defaultValue: 'Your full name' })} style={{ display: 'block', width: '100%', padding: '10px 14px 10px 36px', background: 'white', border: '1.5px solid #DDE1E7', borderRadius: '6px', fontSize: '13px', color: '#1a1a1a', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }} onFocus={e=>e.target.style.borderColor='#003B7A'} onBlur={e=>e.target.style.borderColor='#DDE1E7'} />
                   </div>
                 </div>
               )}
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B6B6B', marginBottom: '6px' }}>Email Address</label>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B6B6B', marginBottom: '6px' }}>{t('auth.email')}</label>
                 <div style={{ position: 'relative' }}>
                   <Mail size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
                   <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" style={{ display: 'block', width: '100%', padding: '10px 14px 10px 36px', background: 'white', border: '1.5px solid #DDE1E7', borderRadius: '6px', fontSize: '13px', color: '#1a1a1a', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }} onFocus={e=>e.target.style.borderColor='#003B7A'} onBlur={e=>e.target.style.borderColor='#DDE1E7'} />
@@ -149,7 +151,7 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B6B6B', marginBottom: '6px' }}>Password</label>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B6B6B', marginBottom: '6px' }}>{t('auth.password')}</label>
                 <div style={{ position: 'relative' }}>
                   <Lock size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
                   <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" style={{ display: 'block', width: '100%', padding: '10px 14px 10px 36px', background: 'white', border: '1.5px solid #DDE1E7', borderRadius: '6px', fontSize: '13px', color: '#1a1a1a', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }} onFocus={e=>e.target.style.borderColor='#003B7A'} onBlur={e=>e.target.style.borderColor='#DDE1E7'} />
@@ -157,25 +159,25 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
               </div>
 
               <button type="submit" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '12px', background: portalConfig.color, color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: loading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
-                {loading ? <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : (isRegister ? 'Create Account' : 'Sign In →')}
+                {loading ? <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> {t('common.loading')}</> : (isRegister ? t('auth.create_account', { defaultValue: 'Create Account' }) : t('auth.sign_in'))}
               </button>
             </form>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '20px 0' }}>
               <div style={{ flex: 1, height: '1px', background: '#DDE1E7' }} />
-              <span style={{ fontSize: '11px', color: '#999', fontWeight: 500 }}>OR</span>
+              <span style={{ fontSize: '11px', color: '#999', fontWeight: 500 }}>{t('common.or', { defaultValue: 'OR' })}</span>
               <div style={{ flex: 1, height: '1px', background: '#DDE1E7' }} />
             </div>
 
             <button onClick={handleGoogle} disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '100%', padding: '11px', background: 'white', color: '#1a1a1a', border: '1.5px solid #DDE1E7', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'border-color 0.2s' }} onMouseEnter={e=>e.target.style.borderColor='#003B7A'} onMouseLeave={e=>e.target.style.borderColor='#DDE1E7'}>
               <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
-              Continue with Google
+              {t('auth.google_signin')}
             </button>
 
             <p style={{ textAlign: 'center', fontSize: '13px', color: '#6B6B6B', marginTop: '20px' }}>
-              {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+              {isRegister ? t('auth.already_have_account', { defaultValue: 'Already have an account?' }) : t('auth.dont_have_account', { defaultValue: "Don't have an account?" })}{' '}
               <button onClick={()=>{setIsRegister(!isRegister);setError('');}} style={{ color: portalConfig.color, background: 'none', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
-                {isRegister ? 'Sign In' : 'Register'}
+                {isRegister ? t('auth.sign_in') : t('auth.register', { defaultValue: 'Register' })}
               </button>
             </p>
           </div>
@@ -183,7 +185,7 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
           {/* Security note */}
           <div style={{ marginTop: '16px', padding: '12px 16px', background: 'white', border: '1px solid #DDE1E7', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '16px' }}>🔒</span>
-            <span style={{ fontSize: '11px', color: '#6B6B6B', lineHeight: 1.5 }}>Your login is secured by <strong style={{ color: '#003B7A' }}>Firebase Authentication</strong>. MP Mitra is a Government of India Digital India initiative.</span>
+            <span style={{ fontSize: '11px', color: '#6B6B6B', lineHeight: 1.5 }}>{t('auth.security_note', { defaultValue: 'Your login is secured by Firebase Authentication. MP Mitra is a Government of India Digital India initiative.' })}</span>
           </div>
         </div>
       </div>
@@ -191,9 +193,9 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
       {/* Footer */}
       <footer className="gov-footer" style={{ background: '#003B7A', padding: '16px 40px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px' }}>© 2026 MP Mitra — Government of India Initiative</div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px' }}>{t('auth.footer_copy', { defaultValue: '© 2026 MP Mitra — Government of India Initiative' })}</div>
           <div style={{ display: 'flex', gap: '20px' }}>
-            {['Help','Privacy Policy','Contact'].map(l=><span key={l} style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px', cursor: 'pointer' }}>{l}</span>)}
+            {['Help','Privacy Policy','Contact'].map(l=><span key={l} style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px', cursor: 'pointer' }}>{t(`auth.link_${l.toLowerCase().replace(' ', '_')}`, { defaultValue: l })}</span>)}
           </div>
         </div>
       </footer>
