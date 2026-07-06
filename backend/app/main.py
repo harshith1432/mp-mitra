@@ -18,9 +18,22 @@ from app.database.crawler_manager import crawler_manager
 app = FastAPI(title="MP Mitra: AI Decision Intelligence Platform", version=VERSION)
 
 # Enable CORS
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    origins = [orig.strip() for orig in allowed_origins_env.split(",") if orig.strip()]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "https://mp-mitra-7e6d9.web.app",
+        "https://mp-mitra.web.app"
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
