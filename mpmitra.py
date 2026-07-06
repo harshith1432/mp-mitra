@@ -989,6 +989,18 @@ def _auto_check_update_background():
     return t
 
 
+def run_sync():
+    """Runs the database synchronization script."""
+    print("*** [MP Mitra] Running Database Synchronization... ***")
+    here = os.path.dirname(os.path.abspath(__file__))
+    sync_script = os.path.join(here, "backend", "app", "database", "db_sync.py")
+    
+    try:
+        subprocess.run([sys.executable, sync_script], check=True)
+    except Exception as e:
+        print(f"*** [MP Mitra] Error running sync: {e} ***")
+
+
 def main():
     parser = argparse.ArgumentParser(description="MP Mitra Command Line Interface (CLI) Service Manager")
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
@@ -996,6 +1008,9 @@ def main():
     # Command: start
     start_parser = subparsers.add_parser("start", help="Start FastAPI backend service and open browser dashboard")
     start_parser.add_argument("--no-browser", action="store_true", help="Launch service without opening browser")
+
+    # Command: sync
+    subparsers.add_parser("sync", help="Synchronize local database tables with Firebase / Neon cloud database")
 
     # Command: stop
     subparsers.add_parser("stop", help="Gracefully stop background running services")
@@ -1063,6 +1078,8 @@ def main():
 
     if args.command == "start":
         start_services(open_browser=not args.no_browser)
+    elif args.command == "sync":
+        run_sync()
     elif args.command == "stop":
         stop_services()
     elif args.command == "restart":

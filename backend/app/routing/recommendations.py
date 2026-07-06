@@ -215,7 +215,7 @@ def _build_recommendations(
             village_water[vk] = []
         village_water[vk].append(w)
 
-    for vname, issues in list(village_water.items())[:10]:
+    for vname, issues in village_water.items():
         contaminants = list({i.quality_parameter for i in issues if i.quality_parameter})
         cont_str = ", ".join(contaminants[:3]) or "Fluoride/Iron"
         gap_score = min(100, len(issues) * 15)
@@ -253,10 +253,10 @@ def _build_recommendations(
         hab_citizen_count = water_citizen_count
         total_unc_pop = sum(
             (h.sc_population + h.st_population + h.general_population)
-            for h in uncovered_habs[:8]
+            for h in uncovered_habs
         )
         score = _pct(min(100, len(uncovered_habs) / max(total_habs, 1) * 150))
-        panchayats = list({h.panchayat_name for h in uncovered_habs[:5] if h.panchayat_name})
+        panchayats = list({h.panchayat_name for h in uncovered_habs if h.panchayat_name})
         recs.append({
             "id": "water_coverage_hab",
             "title": f"Extend JJM Pipeline to {len(uncovered_habs)} Uncovered Habitations",
@@ -310,7 +310,7 @@ def _build_recommendations(
             village_schools[vk] = []
         village_schools[vk].append(s)
 
-    for vname, schs in list(village_schools.items())[:8]:
+    for vname, schs in village_schools.items():
         worst = max(schs, key=lambda x: x.total_students / max(x.total_teachers, 1))
         ptr = worst.total_students / worst.total_teachers
         gap_score = min(100, (ptr - 30) / 30 * 100)
@@ -352,7 +352,7 @@ def _build_recommendations(
         func.upper(Road.state_name) == state_upper,
         func.upper(Road.district_name) == dist_upper,
         Road.surface_type.in_(["Gravel", "Moorum", "Earthen", "WBM"])
-    ).limit(12).all()
+    ).all()
 
     road_citizen_count = _count_complaints_for("road", complaint_counts) + \
                          _count_complaints_for("connectivity", complaint_counts)
@@ -401,7 +401,7 @@ def _build_recommendations(
     amenities = db.query(VillageAmenities).filter(
         func.upper(VillageAmenities.state) == state_upper,
         func.upper(VillageAmenities.district) == dist_upper
-    ).limit(50).all()
+    ).all()
 
     for va in amenities:
         vname = (va.village_name or "Unknown").strip()
@@ -516,7 +516,7 @@ def get_recommendations(
     district: str,
     priority: Optional[str] = None,
     category: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 2000,
     db: Session = Depends(get_db)
 ):
     """

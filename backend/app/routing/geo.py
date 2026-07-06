@@ -10,10 +10,79 @@ import random
 import datetime
 from sqlalchemy import func
 from app.database.connection import get_db, SessionLocal
-from app.database.models import Habitation, WaterQuality, Complaint
+from app.database.models import Habitation, WaterQuality, Complaint, Pincode, School, HealthCentre
 from app.routing.recommendations import _build_recommendations
 
 router = APIRouter()
+
+
+def geocode_village_or_taluk(db_session, district_name: str, place_name: str) -> tuple:
+    place_upper = place_name.strip().upper()
+    
+    # 1. Search schools for this village
+    school = db_session.query(School).filter(
+        func.upper(School.district_name) == district_name,
+        func.upper(School.village_name) == place_upper,
+        School.latitude.isnot(None),
+        School.latitude != 0.0
+    ).first()
+    if school:
+        return school.latitude, school.longitude
+        
+    # 2. Search health centres
+    hc = db_session.query(HealthCentre).filter(
+        func.upper(HealthCentre.district_name) == district_name,
+        func.upper(HealthCentre.subdistrict_name) == place_upper,
+        HealthCentre.latitude.isnot(None),
+        HealthCentre.latitude != 0.0
+    ).first()
+    if hc:
+        return hc.latitude, hc.longitude
+
+    # 3. Search habitations block/village and fetch any nearby school coordinates in same block/village
+    hab = db_session.query(Habitation).filter(
+        func.upper(Habitation.district_name) == district_name,
+        (func.upper(Habitation.village_name) == place_upper) |
+        (func.upper(Habitation.panchayat_name) == place_upper) |
+        (func.upper(Habitation.block_name) == place_upper)
+    ).first()
+    if hab and hab.village_name:
+        school_near = db_session.query(School).filter(
+            func.upper(School.district_name) == district_name,
+            func.upper(School.village_name) == func.upper(hab.village_name),
+            School.latitude.isnot(None),
+            School.latitude != 0.0
+        ).first()
+        if school_near:
+            return school_near.latitude, school_near.longitude
+
+    # 4. Fallback to Taluk centroid with randomized offset
+    taluk_coords = {
+        "MADDUR": (12.5803, 77.0453),
+        "MALAVALLI": (12.3861, 77.0805),
+        "SRIRANGAPATNA": (12.4241, 76.6908),
+        "PANDAVAPURA": (12.4939, 76.6713),
+        "NAGAMANGALA": (12.8211, 76.7583),
+        "KRISHNARAJAPETE": (12.7032, 76.4912),
+        "KR PET": (12.7032, 76.4912),
+        "MANDYA": (12.5218, 76.8951)
+    }
+    
+    for k, v in taluk_coords.items():
+        if k in place_upper or place_upper in k:
+            return v[0] + random.uniform(-0.04, 0.04), v[1] + random.uniform(-0.04, 0.04)
+
+    # 5. Search pincodes table as general fallback
+    ref = db_session.query(Pincode).filter(
+        func.upper(Pincode.district) == district_name,
+        Pincode.latitude.isnot(None),
+        Pincode.latitude != 0.0
+    ).first()
+    if ref:
+        return ref.latitude + random.uniform(-0.15, 0.15), ref.longitude + random.uniform(-0.15, 0.15)
+            
+    # Default Mandya centroid spread
+    return 12.5218 + random.uniform(-0.2, 0.2), 76.8951 + random.uniform(-0.2, 0.2)
 
 
 @router.get("/reverse")
@@ -66,14 +135,11 @@ def get_heatmap_coordinates(district: Optional[str] = Query(None), db_session=De
                 (func.upper(Habitation.block_name) == func.upper(rec["village"]))
             ).first()
             
+            lat, lon = geocode_village_or_taluk(db_session, district_name, rec["village"])
             if hab_match:
-                lat = 12.5218 + (random.uniform(-0.03, 0.03) if i % 2 == 0 else random.uniform(-0.04, 0.04))
-                lon = 76.8951 + (random.uniform(-0.03, 0.03) if i % 2 == 0 else random.uniform(-0.04, 0.04))
                 taluk = hab_match.block_name
                 panchayat = hab_match.panchayat_name
             else:
-                lat = 12.5218 + random.uniform(-0.05, 0.05)
-                lon = 76.8951 + random.uniform(-0.05, 0.05)
                 taluk = f"{rec['village']} Block"
                 panchayat = "Gram Panchayat"
 
@@ -116,8 +182,7 @@ def get_heatmap_coordinates(district: Optional[str] = Query(None), db_session=De
                 lat = data.get("latitude")
                 lon = data.get("longitude")
                 if not lat or not lon or float(lat) == 19.0 or float(lon) == 78.5:
-                    lat = 12.5218 + random.uniform(-0.06, 0.06)
-                    lon = 76.8951 + random.uniform(-0.06, 0.06)
+                    lat, lon = geocode_village_or_taluk(db_session, district_name, data.get("village_name") or "Mandya")
                 else:
                     lat = float(lat)
                     lon = float(lon)
@@ -217,8 +282,7 @@ def get_heatmap_coordinates(district: Optional[str] = Query(None), db_session=De
                 if any(c["summary"] == r.text_content for c in coords):
                     continue
 
-                lat = 12.5218 + random.uniform(-0.06, 0.06)
-                lon = 76.8951 + random.uniform(-0.06, 0.06)
+                lat, lon = geocode_village_or_taluk(db_session, district_name, r.village_name or "Mandya")
                 
                 v_name = r.village_name or "General Area"
                 hab = db_session.query(Habitation).filter(
