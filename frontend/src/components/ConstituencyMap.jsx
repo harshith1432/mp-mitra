@@ -446,6 +446,14 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
             </div>
           </div>
 
+          {/* AI Recommended Solution */}
+          <div>
+            <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>💡 AI Recommended Solution</h4>
+            <p style={{ fontSize: '12px', color: '#2D3748', lineHeight: 1.5, margin: '0 0 14px 0', padding: '12px', background: '#F0F9FF', borderLeft: '3px solid #003B7A', borderRadius: '4px', fontWeight: 500 }}>
+              {selectedPoint.solution || "AI Recommendation: Conduct local field investigation and allocate targeted development funds under the appropriate constituency scheme."}
+            </p>
+          </div>
+
           {/* Recommended Scheme */}
           <div>
             <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>🎯 Matching Scheme Match</h4>
