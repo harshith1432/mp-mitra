@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "mp-mitra"
+  },
+  "targets": {
+    "mp-mitra": {
+      "hosting": {
+        "mp-mitra-7e6d9": [
+          "mp-mitra-7e6d9"
+        ]
+      }
+    }
+  }
+}

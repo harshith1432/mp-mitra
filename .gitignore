@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+/dist
+/frontend/node_modules
+/frontend/dist
+
+# Firebase
+.firebase/
+mp-mitra-firebase-adminsdk-fbsvc-a0bb1ec47e.json
+
+# Backend Environment & Caches
+backend/.env
+backend/venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Data & SQLite files
+DATASET/
+*.db
+*.sqlite
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,579 @@
+import React, { useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Search, Map as MapIcon, Layers, Compass, X, Info, Mic } from 'lucide-react';
+
+export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const tileLayerRef = useRef(null);
+  const markersLayerRef = useRef(null);
+  const circlesLayerRef = useRef(null);
+  
+  const [points, setPoints] = useState([]);
+  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [mapType, setMapType] = useState('voyager'); // 'voyager' | 'satellite' | 'terrain'
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [streetViewActive, setStreetViewActive] = useState(false);
+  const [showStreetViewModal, setShowStreetViewModal] = useState(false);
+  const [streetViewLocation, setStreetViewLocation] = useState('');
+
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? ''
+    : 'https://mp-mitra-backend-1071706665291.asia-south1.run.app';
+
+  // Helper to resolve priority colors dynamically
+  const getPriorityColor = (priority) => {
+    if (priority >= 85) return '#C62B2B'; // Red for Critical
+    if (priority >= 70) return '#FB8C00'; // Orange for High
+    return '#4CAF50'; // Green for Moderate
+  };
+
+  // Helper to map category to realistic public infrastructure deficit photo placeholders
+  const getCategoryPhoto = (category) => {
+    const photos = {
+      'Water & Sanitation': 'https://images.unsplash.com/photo-1508962914676-134849a727f0?auto=format&fit=crop&w=600&q=80', // Muddy water / tap
+      'Roads & Connectivity': 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?auto=format&fit=crop&w=600&q=80', // Muddy dirt road potholes
+      'Healthcare & Welfare': 'https://images.unsplash.com/photo-1584515901367-f134e45afc37?auto=format&fit=crop&w=600&q=80', // Empty clinic ward room
+      'Education & Schools': 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80', // Indian school classroom
+    };
+    return photos[category] || 'https://images.unsplash.com/photo-1544027791-cd7fe6df128d?auto=format&fit=crop&w=600&q=80';
+  };
+
+  // 1. Fetch geocoded points
+  useEffect(() => {
+    fetch(`${API_BASE}/api/geo/heatmap?district=${activeDistrict}`)
+      .then(res => res.json())
+      .then(data => {
+        setPoints(data);
+      })
+      .catch(err => {
+        console.error('[Map Error] Fetching coordinates failed:', err);
+        // Fallback demo coordinates
+        setPoints([
+          { lat: 12.5218, lon: 76.8951, village: 'Mandya Rural Centroid', district: 'MANDYA', state: 'KARNATAKA', category: 'Water & Sanitation', priority: 92, intensity: 0.95, summary: 'Damaged water main pipeline causing supply shortage for 450 households.', duration: '14 days ago' },
+          { lat: 12.5518, lon: 76.8651, village: 'Koppa North Habitation', district: 'MANDYA', state: 'KARNATAKA', category: 'Roads & Connectivity', priority: 85, intensity: 0.85, summary: 'Pothole-ridden road section preventing primary school bus access.', duration: '2 months ago' },
+          { lat: 12.4918, lon: 76.9251, village: 'Maddur Centroid', district: 'MANDYA', state: 'KARNATAKA', category: 'Healthcare & Welfare', priority: 78, intensity: 0.78, summary: 'Doctor vacancy at local Primary Health Center (PHC) for last 6 months.', duration: '6 months ago' },
+          { lat: 12.5318, lon: 76.9551, village: 'Besagarahalli South', district: 'MANDYA', state: 'KARNATAKA', category: 'Education & Schools', priority: 64, intensity: 0.64, summary: 'Deficit in primary school boundary wall construction, safety alert.', duration: '10 days ago' }
+        ]);
+      });
+  }, [activeDistrict]);
+
+  // 2. Initialize Leaflet Map Instance
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const center = [12.5218, 76.8951];
+
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapRef.current, {
+        center: center,
+        zoom: 12,
+        zoomControl: false
+      });
+      
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      mapInstanceRef.current = map;
+      
+      // Initialize Layer Groups
+      markersLayerRef.current = L.layerGroup().addTo(map);
+      circlesLayerRef.current = L.layerGroup().addTo(map);
+    } else {
+      mapInstanceRef.current.setView(center, 12);
+    }
+  }, [activeDistrict]);
+
+  // 3. Dynamically manage Tile Layer (Standard 2D Map, Satellite, Terrain)
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    if (tileLayerRef.current) {
+      mapInstanceRef.current.removeLayer(tileLayerRef.current);
+    }
+
+    let url = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    let attrib = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+    if (mapType === 'satellite') {
+      url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      attrib = 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
+    } else if (mapType === 'terrain') {
+      url = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+      attrib = 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)';
+    }
+
+    tileLayerRef.current = L.tileLayer(url, {
+      attribution: attrib,
+      maxZoom: 18
+    }).addTo(mapInstanceRef.current);
+  }, [mapType]);
+
+  // 4. Update Markers and Heat Circles (Color Coded by Priority)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !markersLayerRef.current || !circlesLayerRef.current) return;
+
+    // Clear existing layers
+    markersLayerRef.current.clearLayers();
+    circlesLayerRef.current.clearLayers();
+
+    points.forEach(p => {
+      const color = getPriorityColor(p.priority);
+
+      // Heat Circle
+      const circle = L.circle([p.lat, p.lon], {
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.25,
+        radius: 350 + (p.priority * 2)
+      }).addTo(circlesLayerRef.current);
+
+      // Custom Div Icon based on Priority Color
+      const customIcon = L.divIcon({
+        html: `<div style="
+          width: 14px; 
+          height: 14px; 
+          background: ${color}; 
+          border: 2px solid white; 
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 10px ${color};
+          cursor: pointer;
+        "></div>`,
+        className: '',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+      });
+
+      const marker = L.marker([p.lat, p.lon], { icon: customIcon }).addTo(markersLayerRef.current);
+
+      const selectPoint = () => {
+        setSelectedPoint(p);
+        map.setView([p.lat, p.lon], 13);
+      };
+
+      marker.on('click', selectPoint);
+      circle.on('click', selectPoint);
+    });
+  }, [points]);
+
+  // 5. Handle Map Clicks for Street View Mode
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const handleMapClick = (e) => {
+      if (streetViewActive) {
+        setStreetViewLocation(`${e.latlng.lat.toFixed(4)}°, ${e.latlng.lng.toFixed(4)}°`);
+        setShowStreetViewModal(true);
+        setStreetViewActive(false); // Deactivate after launching modal
+      }
+    };
+
+    map.on('click', handleMapClick);
+    return () => {
+      map.off('click', handleMapClick);
+    };
+  }, [streetViewActive]);
+
+  // 6. Handle cursor change when Street View Mode is active
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const container = map.getContainer();
+    if (streetViewActive) {
+      container.style.cursor = 'crosshair';
+    } else {
+      container.style.cursor = '';
+    }
+  }, [streetViewActive]);
+
+  // 7. Search Bar execution
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    const q = searchQuery.toLowerCase().trim();
+    const matched = points.find(p => p.village.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+    if (matched && mapInstanceRef.current) {
+      mapInstanceRef.current.setView([matched.lat, matched.lon], 14);
+      setSelectedPoint(matched);
+    } else {
+      alert(`Location/Category "${searchQuery}" not found. Try searching for Besagarahalli, Koppa, or Water.`);
+    }
+  };
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: selectedPoint ? '1fr 360px' : '1fr', height: 'calc(100vh - 120px)', position: 'relative' }}>
+      
+      {/* Search Bar Overlay */}
+      <form onSubmit={handleSearchSubmit} style={{
+        position: 'absolute',
+        top: '15px',
+        left: '15px',
+        zIndex: 1000,
+        background: 'white',
+        padding: '6px 12px',
+        borderRadius: '24px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        border: '1px solid #DDE1E7',
+        display: 'flex',
+        alignItems: 'center',
+        width: '320px',
+        gap: '8px'
+      }}>
+        <Search size={18} style={{ color: '#718096' }} />
+        <input 
+          type="text" 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={`Search ${activeDistrict}...`} 
+          style={{
+            border: 'none',
+            outline: 'none',
+            fontSize: '13px',
+            flex: 1,
+            color: '#2D3748',
+            fontFamily: 'Inter, sans-serif'
+          }}
+        />
+        {searchQuery && (
+          <button type="button" onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}>
+            <X size={14} style={{ color: '#718096' }} />
+          </button>
+        )}
+        <div style={{ width: '1px', height: '18px', background: '#DDE1E7' }} />
+        <button type="button" onClick={() => alert("Voice command activated... Speak now.")} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}>
+          <Mic size={16} style={{ color: '#FF6B1A' }} />
+        </button>
+      </form>
+
+      {/* Layer Control Overlay (Google Map style Map / Satellite selector) */}
+      <div style={{
+        position: 'absolute',
+        top: '15px',
+        right: '15px',
+        zIndex: 1000,
+        background: 'white',
+        padding: '4px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        border: '1px solid #DDE1E7',
+        display: 'flex',
+        gap: '4px'
+      }}>
+        {[
+          { id: 'voyager', label: 'Map 2D', icon: MapIcon },
+          { id: 'satellite', label: 'Satellite', icon: Layers },
+          { id: 'terrain', label: 'Terrain', icon: Compass }
+        ].map(opt => {
+          const ActiveIcon = opt.icon;
+          const isActive = mapType === opt.id;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => setMapType(opt.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: isActive ? '#EEF4FC' : 'transparent',
+                color: isActive ? '#003B7A' : '#4A5568',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'Inter, sans-serif'
+              }}
+            >
+              <ActiveIcon size={14} />
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Pegman / Street View Activate Button */}
+      <div style={{
+        position: 'absolute',
+        bottom: '120px',
+        right: '15px',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '8px'
+      }}>
+        <button
+          onClick={() => setStreetViewActive(!streetViewActive)}
+          style={{
+            background: streetViewActive ? '#FFB300' : '#FFD54F',
+            border: '2px solid white',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.25)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            cursor: 'pointer',
+            fontSize: '20px',
+            transition: 'all 0.2s',
+            outline: 'none'
+          }}
+          title="Google Street View Pegman"
+        >
+          🚹
+        </button>
+      </div>
+
+      {/* Pegman Mode Active Banner */}
+      {streetViewActive && (
+        <div style={{
+          position: 'absolute',
+          top: '75px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1001,
+          background: '#FF9100',
+          color: 'white',
+          padding: '10px 20px',
+          borderRadius: '24px',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+          fontSize: '13px',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          animation: 'fadeInUp 0.3s ease'
+        }}>
+          <span>🟡 Pegman Mode Active: Click any point on the map to enter Street View</span>
+          <button 
+            onClick={() => setStreetViewActive(false)} 
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '20px',
+              height: '20px',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontWeight: 800
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Map Container */}
+      <div ref={mapRef} style={{ width: '100%', height: '100%', background: '#F5F7FA' }} />
+
+      {/* Map Legends Overlaid (Clean White Theme - Priority Based) */}
+      <div style={{
+        position: 'absolute',
+        bottom: '20px',
+        left: '20px',
+        background: 'rgba(255,255,255,0.95)',
+        padding: '14px 18px',
+        borderRadius: '12px',
+        border: '1px solid #DDE1E7',
+        color: '#1a1a1a',
+        boxShadow: '0 6px 16px rgba(0,0,0,0.1)',
+        zIndex: 1000,
+        fontSize: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        fontFamily: 'Inter, sans-serif'
+      }}>
+        <div style={{ fontWeight: 800, borderBottom: '1px solid #E2E8F0', paddingBottom: '6px', marginBottom: '2px', fontFamily: 'Space Grotesk, sans-serif', color: '#003B7A' }}>🚨 Priority Deficit Index</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#C62B2B' }} /> Critical Deficit (Priority &ge; 85)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#FB8C00' }} /> High Deficit (Priority 70 - 84)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4CAF50' }} /> Moderate Deficit (Priority &lt; 70)</div>
+      </div>
+
+      {/* Sidebar Details Panel */}
+      {selectedPoint && (
+        <div style={{ background: 'white', borderLeft: '1px solid #DDE1E7', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', zIndex: 999 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span className="gov-badge gov-badge--blue" style={{ fontSize: '10px' }}>📍 {selectedPoint.village}, {selectedPoint.district || activeDistrict}, {selectedPoint.state || 'KARNATAKA'}</span>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#003B7A', margin: '6px 0 0 0', fontFamily: 'Space Grotesk, sans-serif' }}>{selectedPoint.category}</h3>
+            </div>
+            <button onClick={() => setSelectedPoint(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6B6B6B' }}>✕</button>
+          </div>
+
+          {/* Priority Score Gauge */}
+          <div style={{ background: '#FFF3EC', border: '1px solid #FDDCCA', borderRadius: '8px', padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '50px', height: '50px', borderRadius: '50%', border: '4px solid #FF6B1A', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#FF6B1A', fontSize: '15px' }}>
+              {selectedPoint.priority}
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#FF6B1A' }}>AI Priority Rank</div>
+              <div style={{ fontSize: '10px', color: '#6B6B6B', marginTop: '2px' }}>Calculated by affected population, urgency & neglect.</div>
+            </div>
+          </div>
+
+          {/* Duration Badge */}
+          <div style={{ background: '#EDF2F7', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#4A5568', fontFamily: 'Inter, sans-serif' }}>
+            <span>🕒</span>
+            <span><strong>Duration:</strong> Unresolved for {selectedPoint.duration || '14 days ago'}</span>
+          </div>
+
+          {/* AI Deficit Summary */}
+          <div>
+            <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>📝 Actual Problem Details</h4>
+            <p style={{ fontSize: '12.5px', color: '#1a1a1a', lineHeight: 1.6, margin: 0, background: '#F5F7FA', padding: '12px', borderRadius: '6px' }}>
+              {selectedPoint.summary || 'Citizen report details matched against constituency records. Indicating an active infrastructure gap.'}
+            </p>
+          </div>
+
+          {/* Deficit Image */}
+          <div>
+            <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>📸 Grievance Photo</h4>
+            <div style={{ width: '100%', height: '160px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #DDE1E7', background: '#F5F7FA' }}>
+              <img 
+                src={selectedPoint.photo_url || getCategoryPhoto(selectedPoint.category)} 
+                alt="Grievance Context" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+          </div>
+
+          {/* Recommended Scheme */}
+          <div>
+            <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>🎯 Matching Scheme Match</h4>
+            <div style={{ border: '1px solid #DDE1E7', borderRadius: '8px', padding: '12px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 800, color: '#003B7A' }}>
+                {selectedPoint.category.includes('Water') ? 'Jal Jeevan Mission (JJM)' : selectedPoint.category.includes('Road') ? 'PM Gram Sadak Yojana (PMGSY)' : 'MPLADS Allocation Fund'}
+              </div>
+              <p style={{ fontSize: '11px', color: '#6B6B6B', margin: '4px 0 8px 0' }}>Eligible central/state grant funding opportunity detected.</p>
+              <a href="https://myscheme.gov.in" target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: '#FF6B1A', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                View Scheme Guidelines ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Street View Panorama Modal */}
+      {showStreetViewModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.9)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'fadeInUp 0.3s ease'
+        }}>
+          {/* Top Panel bar */}
+          <div style={{
+            width: '90%',
+            maxWidth: '1000px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            color: 'white',
+            marginBottom: '10px',
+            fontFamily: 'Inter, sans-serif'
+          }}>
+            <div>
+              <span style={{ fontSize: '12px', background: '#FFC107', color: 'black', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, marginRight: '8px' }}>STREET VIEW</span>
+              <span style={{ fontWeight: 600 }}>Rural Connector Road — Mandya District, Karnataka</span>
+              <span style={{ color: '#A0AEC0', fontSize: '12px', marginLeft: '10px' }}>({streetViewLocation})</span>
+            </div>
+            <button 
+              onClick={() => setShowStreetViewModal(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                fontSize: '24px',
+                cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Panorama Container */}
+          <div style={{
+            position: 'relative',
+            width: '90%',
+            maxWidth: '1000px',
+            height: '60vh',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            border: '3px solid white',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+          }}>
+            {/* Street View Image */}
+            <img 
+              src="/streetview_mock.png" 
+              alt="Street View panorama" 
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+
+            {/* Mock Navigation Arrows */}
+            <div style={{ position: 'absolute', bottom: '30px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '8px', zIndex: 10 }}>
+              <button onClick={() => alert("Moving forward along road...")} style={{ background: 'rgba(255,255,255,0.8)', border: 'none', width: '36px', height: '36px', borderRadius: '50%', fontWeight: 800, cursor: 'pointer', fontSize: '16px' }}>↑</button>
+              <button onClick={() => alert("Moving backward along road...")} style={{ background: 'rgba(255,255,255,0.8)', border: 'none', width: '36px', height: '36px', borderRadius: '50%', fontWeight: 800, cursor: 'pointer', fontSize: '16px' }}>↓</button>
+            </div>
+
+            {/* Compass Dial Indicator */}
+            <div style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'rgba(0,0,0,0.6)',
+              color: 'white',
+              width: '50px',
+              height: '50px',
+              borderRadius: '50%',
+              border: '2px solid white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              fontFamily: 'Inter'
+            }}>
+              N
+            </div>
+            
+            {/* Attribution tag */}
+            <div style={{
+              position: 'absolute',
+              bottom: '10px',
+              right: '15px',
+              color: 'white',
+              background: 'rgba(0,0,0,0.4)',
+              padding: '2px 8px',
+              fontSize: '10px',
+              borderRadius: '4px'
+            }}>
+              © 2026 Google Street View Mockup
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
