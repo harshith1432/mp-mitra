@@ -6,6 +6,9 @@ import AuthScreen from './components/AuthScreen';
 import ConstituencyMap from './components/ConstituencyMap';
 import WhatsAppSimulator from './components/WhatsAppSimulator';
 import ScraperConsole from './components/ScraperConsole';
+import DatasetManagerConsole from './components/DatasetManagerConsole';
+import { useLanguage } from './context/LanguageContext';
+
 import fallbackDistrictsMap from './districts_data.json';
 import districtCoordsMap from './district_coords.json';
 import L from 'leaflet';
@@ -45,6 +48,9 @@ const complaintIcon = L.divIcon({
 // ============================================================
 function GovHeader({ portalLabel, portalColor, currentUser, onExit }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const { lang, changeLanguage, t, currentLangDef, SUPPORTED_LANGUAGES } = useLanguage();
+
   const accentColorMap = {
     citizen: '#003B7A',
     official: '#FF6B1A',
@@ -63,8 +69,8 @@ function GovHeader({ portalLabel, portalColor, currentUser, onExit }) {
             <span style={{ fontSize: '18px' }}>🇮🇳</span>
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: 'white', fontWeight: 800, fontSize: '18px', letterSpacing: '-0.3px', lineHeight: 1, whiteSpace: 'nowrap' }}>MP MITRA</div>
-            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>National AI Governance Intelligence Platform</div>
+            <div style={{ color: 'white', fontWeight: 800, fontSize: '18px', letterSpacing: '-0.3px', lineHeight: 1, whiteSpace: 'nowrap' }}>{t('app.name')}</div>
+            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('app.tagline')}</div>
           </div>
         </div>
 
@@ -73,8 +79,91 @@ function GovHeader({ portalLabel, portalColor, currentUser, onExit }) {
           {portalLabel}
         </div>
 
-        {/* User + exit */}
+        {/* Language selector + User + exit */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
+          {/* Language Selector Dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setLangMenuOpen(!langMenuOpen)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: '6px',
+                color: 'white',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              🌐 {currentLangDef.name} <ChevronDown size={12} />
+            </button>
+            {langMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '6px',
+                  background: 'white',
+                  border: '1px solid #DDE1E7',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                  zIndex: 9999,
+                  minWidth: '220px',
+                  maxHeight: '350px',
+                  overflowY: 'auto',
+                  padding: '8px'
+                }}
+              >
+                {['English', 'South India', 'North India', 'West India', 'East India'].map(region => {
+                  const list = SUPPORTED_LANGUAGES.filter(l => l.region === region);
+                  if (list.length === 0) return null;
+                  return (
+                    <div key={region} style={{ marginBottom: '8px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#999', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {region === 'English' ? t('lang.selector_label') : t(`lang.${region.toLowerCase().replace(' ', '_')}`)}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2px' }}>
+                        {list.map(l => (
+                          <button
+                            key={l.code}
+                            onClick={() => {
+                              changeLanguage(l.code);
+                              setLangMenuOpen(false);
+                            }}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '6px 12px',
+                              background: lang === l.code ? '#EEF3FA' : 'transparent',
+                              border: 'none',
+                              borderRadius: '4px',
+                              color: lang === l.code ? '#003B7A' : '#1a1a1a',
+                              fontSize: '12.5px',
+                              fontWeight: lang === l.code ? 700 : 500,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <span>{l.name}</span>
+                            {l.english !== l.name && <span style={{ fontSize: '9.5px', color: '#999' }}>{l.english}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {currentUser && (
             <>
               <div style={{ textAlign: 'right' }}>
@@ -82,7 +171,7 @@ function GovHeader({ portalLabel, portalColor, currentUser, onExit }) {
                 <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', textTransform: 'uppercase', fontWeight: 500 }}>{currentUser.role}</div>
               </div>
               <button onClick={onExit} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', borderRadius: '6px', color: 'white', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                <LogOut size={13} /> Exit
+                <LogOut size={13} /> {t('app.exit')}
               </button>
             </>
           )}
@@ -97,8 +186,8 @@ function GovHeader({ portalLabel, portalColor, currentUser, onExit }) {
             <span style={{ fontSize: '16px' }}>🇮🇳</span>
           </div>
           <div>
-            <div style={{ color: 'white', fontWeight: 800, fontSize: '16px', lineHeight: 1 }}>MP MITRA</div>
-            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '9px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Gov. Intelligence Platform</div>
+            <div style={{ color: 'white', fontWeight: 800, fontSize: '16px', lineHeight: 1 }}>{t('app.name')}</div>
+            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '9px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{t('app.tagline')}</div>
           </div>
         </div>
 
@@ -134,7 +223,7 @@ function GovHeader({ portalLabel, portalColor, currentUser, onExit }) {
                 <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', textTransform: 'uppercase', fontWeight: 600, marginTop: '2px' }}>{currentUser.role}</div>
               </div>
               <button onClick={() => { setMobileMenuOpen(false); onExit(); }} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(198,43,43,0.2)', border: '1px solid rgba(198,43,43,0.4)', borderRadius: '6px', color: '#ff8a8a', padding: '7px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                <LogOut size={13} /> Exit
+                <LogOut size={13} /> {t('app.exit')}
               </button>
             </div>
           )}
@@ -2216,6 +2305,7 @@ function WebScraperDatabaseConsole({ selectedState, selectedDistrict, crawledDat
 // MAIN APP COMPONENT
 // ============================================================
 export default function App() {
+  const { t } = useLanguage();
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [firestoreComplaints, setFirestoreComplaints] = useState([]);
@@ -2836,17 +2926,17 @@ export default function App() {
   // ── CITIZEN PORTAL (Top-Nav Layout) ───────────────────────
   if (selectedPortal === 'citizen') {
     const navItems = [
-      { id:'home', label:'Home', icon:Home },
-      { id:'kiosk', label:'Submit Suggestion', icon:Volume2 },
-      { id:'assistant', label:'AI Assistant', icon:Bot },
-      { id:'issues', label:'Nearby Issues', icon:MapPin },
-      { id:'track', label:'Track Status', icon:Clock },
-      { id:'schemes', label:'Welfare Schemes', icon:Award },
+      { id:'home', label:t('nav.home'), icon:Home },
+      { id:'kiosk', label:t('nav.submit'), icon:Volume2 },
+      { id:'assistant', label:t('nav.assistant'), icon:Bot },
+      { id:'issues', label:t('nav.nearby_issues'), icon:MapPin },
+      { id:'track', label:t('nav.track'), icon:Clock },
+      { id:'schemes', label:t('nav.welfare'), icon:Award },
     ];
 
     return (
       <div style={{ minHeight:'100vh', background:'#F5F7FA', fontFamily:'Inter, sans-serif' }}>
-        <GovHeader portalLabel="Citizen Services Portal" portalColor="citizen" currentUser={currentUser} onExit={()=>{signOut(auth);setSelectedPortal(null);}} />
+        <GovHeader portalLabel={t('header.citizen_portal')} portalColor="citizen" currentUser={currentUser} onExit={()=>{signOut(auth);setSelectedPortal(null);}} />
 
         {/* Top Navigation Bar */}
         <div className="gov-header-nav-row" style={{ background:'white', borderBottom:'1px solid #DDE1E7', padding:'0 32px', boxShadow:'0 1px 3px rgba(0,0,0,0.05)' }}>
@@ -2861,12 +2951,12 @@ export default function App() {
         </div>
 
         {/* Page Banner */}
-        {activeTab === 'home' && <GovPageBanner title={`Welcome, ${currentUser.displayName || 'Citizen'}!`} subtitle="Your gateway to local governance — submit suggestions, track progress, and access government welfare programmes." breadcrumbs={['Citizen Portal','Home']} />}
-        {activeTab === 'kiosk' && <GovPageBanner title="Submit Development Suggestion" subtitle="Describe the public issue you wish to report. Select your location before describing the problem." breadcrumbs={['Citizen Portal','Submit Suggestion']} />}
-        {activeTab === 'assistant' && <GovPageBanner title="Citizen AI Assistant" subtitle="Ask about local infrastructure, government schemes, or check service availability near you." breadcrumbs={['Citizen Portal','AI Assistant']} />}
-        {activeTab === 'issues' && <GovPageBanner title="Nearby Issues Map" subtitle="View all active grievances and infrastructure points in your constituency." breadcrumbs={['Citizen Portal','Nearby Issues']} />}
-        {activeTab === 'track' && <GovPageBanner title="Track Suggestion Status" subtitle="Monitor the resolution progress of your submitted suggestions." breadcrumbs={['Citizen Portal','Track Status']} />}
-        {activeTab === 'schemes' && <GovPageBanner title="Government Welfare Schemes" subtitle="Find eligible schemes based on your income and occupation profile." breadcrumbs={['Citizen Portal','Welfare Schemes']} />}
+        {activeTab === 'home' && <GovPageBanner title={t('banner.home.title', { name: currentUser.displayName || 'Citizen' })} subtitle={t('banner.home.subtitle')} breadcrumbs={[t('header.citizen_portal'), t('nav.home')]} />}
+        {activeTab === 'kiosk' && <GovPageBanner title={t('banner.submit.title')} subtitle={t('banner.submit.subtitle')} breadcrumbs={[t('header.citizen_portal'), t('nav.submit')]} />}
+        {activeTab === 'assistant' && <GovPageBanner title={t('banner.assistant.title')} subtitle={t('banner.assistant.subtitle')} breadcrumbs={[t('header.citizen_portal'), t('nav.assistant')]} />}
+        {activeTab === 'issues' && <GovPageBanner title={t('banner.issues.title')} subtitle={t('banner.issues.subtitle')} breadcrumbs={[t('header.citizen_portal'), t('nav.nearby_issues')]} />}
+        {activeTab === 'track' && <GovPageBanner title={t('banner.track.title')} subtitle={t('banner.track.subtitle')} breadcrumbs={[t('header.citizen_portal'), t('nav.track')]} />}
+        {activeTab === 'schemes' && <GovPageBanner title={t('banner.schemes.title')} subtitle={t('banner.schemes.subtitle')} breadcrumbs={[t('header.citizen_portal'), t('nav.welfare')]} />}
 
         <main style={{ padding:'28px 32px', maxWidth:'1200px', margin:'0 auto' }}>
 
@@ -3236,6 +3326,7 @@ export default function App() {
   ];
   const adminNav = [
     {id:'admin', label:'Dataset Ingestion', icon:Upload},
+    {id:'datasets', label:'Intelligent Dataset Manager', icon:Database},
     {id:'scraper', label:'AI Web Scraper', icon:Globe},
     {id:'users', label:'User Access Control', icon:Users},
     {id:'models', label:'AI Models Health', icon:Activity},
@@ -4214,6 +4305,10 @@ export default function App() {
                     </div>
                   </div>
                 </>
+              )}
+
+              {activeTab === 'datasets' && (
+                <DatasetManagerConsole />
               )}
 
               {activeTab === 'scraper' && (

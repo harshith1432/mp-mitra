@@ -45,6 +45,7 @@ VERSION = _VERSION_INFO.get("version", "1.0.0")
 try:
     sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
     from app.config_manager import config_manager
+    from app.database.dataset_manager import dataset_manager, download_state
 except Exception:
     # Fail-safe local ConfigManager minimal implementation
     class LocalConfigManager:
@@ -157,6 +158,9 @@ def get_pid_on_port(port: int) -> Optional[int]:
 
 def start_services(open_browser: bool = True):
     """Starts the MP Mitra background service with robust health checking and detachment."""
+    # Verify/prompt for datasets before starting the server
+    check_and_prompt_datasets()
+    
     log_message("[*] Starting MP Mitra Background Service...")
     
     port = int(config_manager.get("PORT", 8000))
@@ -610,6 +614,195 @@ def run_doctor():
 
     print("==================================================")
 
+def check_and_prompt_datasets():
+    """Checks if required datasets are missing on startup and handles downloads/warnings."""
+    datasets = dataset_manager.manifest["datasets"]
+    missing = [d_id for d_id, info in datasets.items() if not info.get("installed")]
+    
+    if not missing:
+        return True
+
+    print("\n==================================================")
+    print("      MP MITRA DATASET CHECKER & INSTALLER        ")
+    print("==================================================")
+    print(f"Warning: {len(missing)} required dataset(s) are missing:")
+    for m in missing:
+        print(f"  - {datasets[m]['name']} ({datasets[m]['filename']})")
+        
+    print("\nChecking internet connection for automatic installation...")
+    if dataset_manager.check_internet():
+        print("[OK] Internet connection available.")
+        confirm = input("Would you like to automatically download and install these datasets now? (y/n): ")
+        if confirm.lower() == 'y':
+            cli_datasets_update(dataset_id="all", force=False)
+            # Re-read manifest to verify
+            dataset_manager._load_manifest()
+            still_missing = [d_id for d_id, info in dataset_manager.manifest["datasets"].items() if not info.get("installed")]
+            if not still_missing:
+                print("[OK] All datasets successfully installed!")
+                print("==================================================\n")
+                return True
+            else:
+                print("[WARN] Some datasets failed to install.")
+        else:
+            print("[INFO] Skipping dataset download.")
+    else:
+        print("[WARN] Internet is offline. Cannot download datasets right now.")
+
+    print("\nYou can continue starting the application, but some features will be limited.")
+    print("Please install them later when online using:")
+    print("    mpmitra datasets update")
+    print("==================================================\n")
+    time.sleep(2)
+    return False
+
+def cli_datasets_status():
+    """Prints status of all datasets, paths, and size usage."""
+    print("========================================")
+    print("MP Mitra Dataset Status Sheet")
+    print("========================================")
+    print(f"Datasets Path : {dataset_manager.get_dataset_dir()}")
+    print(f"Cache Path    : {dataset_manager.cache_dir}")
+    print(f"Provider      : {dataset_manager.manifest.get('provider')}")
+    print(f"Provider URL  : {dataset_manager.manifest.get('provider_url')}")
+    print("----------------------------------------")
+    
+    datasets = dataset_manager.manifest["datasets"]
+    installed_size = 0
+    missing_count = 0
+    
+    for d_id, info in datasets.items():
+        status_str = "Missing"
+        if info.get("installed"):
+            if info.get("installed_version") == info.get("version"):
+                status_str = "Verified (Up to date)"
+                for f in info.get("expected_files", []):
+                    fp = Path(dataset_manager.get_dataset_dir()) / f
+                    if fp.exists():
+                        installed_size += fp.stat().st_size
+            else:
+                status_str = f"Outdated (Local: {info.get('installed_version')}, Cloud: {info.get('version')})"
+        else:
+            missing_count += 1
+            
+        print(f"Dataset   : {info.get('name')}")
+        print(f"  ID      : {d_id}")
+        print(f"  Version : {info.get('installed_version') or 'N/A'} (Latest: {info.get('version')})")
+        print(f"  Status  : {status_str}")
+        print(f"  Size    : {info.get('size') / (1024*1024):.2f} MB compressed")
+        print()
+        
+    print("----------------------------------------")
+    print(f"Total Local Datasets Size : {installed_size / (1024*1024):.2f} MB")
+    print(f"Missing Datasets Count    : {missing_count}")
+    print("========================================")
+
+def cli_datasets_verify():
+    """Verifies SHA-256 hashes of all installed dataset archives in the cache."""
+    print("========================================")
+    print("MP Mitra Dataset Integrity Verification")
+    print("========================================")
+    
+    datasets = dataset_manager.manifest["datasets"]
+    all_ok = True
+    
+    for d_id, info in datasets.items():
+        print(f"Verifying '{info['name']}'...")
+        files_ok = True
+        for f in info.get("expected_files", []):
+            fp = Path(dataset_manager.get_dataset_dir()) / f
+            if not fp.exists():
+                print(f"  - [ERROR] Extracted file missing: {f}")
+                files_ok = False
+            else:
+                print(f"  - [OK] Extracted file exists: {f} ({fp.stat().st_size / (1024*1024):.2f} MB)")
+                
+        zip_path = dataset_manager.cache_dir / info["filename"]
+        if zip_path.exists():
+            is_valid = dataset_manager.verify_sha256(zip_path, info["sha256"])
+            if is_valid:
+                print(f"  - [OK] Cached ZIP checksum verified ({info['sha256'][:8]}...)")
+            else:
+                print(f"  - [ERROR] Cached ZIP checksum verification failed!")
+                files_ok = False
+        else:
+            print(f"  - [WARN] ZIP archive not cached.")
+            
+        if files_ok:
+            print(f"Status: VERIFIED\n")
+        else:
+            print(f"Status: CORRUPTED/INCOMPLETE\n")
+            all_ok = False
+            
+    print("========================================")
+    if all_ok:
+        print("[OK] All datasets successfully verified!")
+    else:
+        print("[ERROR] Some datasets are corrupted or missing. Run 'mpmitra datasets repair' to reinstall them.")
+    print("========================================")
+
+def cli_datasets_repair():
+    """Deletes cached ZIP files and forces re-download & extraction of all datasets."""
+    print("[*] Initiating Full Dataset Repair Pipeline...")
+    confirm = input("This will delete all cached archives and force a fresh download and extraction. Proceed? (y/n): ")
+    if confirm.lower() != 'y':
+        print("Cancelled.")
+        return
+        
+    try:
+        shutil.rmtree(dataset_manager.cache_dir)
+        dataset_manager.cache_dir.mkdir(parents=True, exist_ok=True)
+        print("[OK] Cached ZIP files cleared.")
+    except Exception as e:
+        print(f"[WARN] Failed to clear cache: {e}")
+        
+    cli_datasets_update(dataset_id="all", force=True)
+
+def cli_datasets_update(dataset_id="all", force=False):
+    """Starts the download/update task and streams progress to console."""
+    res = dataset_manager.start_download_task(dataset_id, force=force)
+    if res != "Download started.":
+        print(f"Failed to start task: {res}")
+        return
+        
+    print(f"\n[*] Initiating download update process (dataset: {dataset_id}, force={force})...")
+    
+    last_phase = None
+    while True:
+        state = download_state
+        status = state["status"]
+        
+        if status == "idle":
+            time.sleep(0.5)
+            continue
+            
+        if status == "completed":
+            print("\n\n[OK] Dataset installation completed successfully!")
+            break
+            
+        if status == "failed":
+            print(f"\n\n[ERROR] Operation failed: {state['error']}")
+            break
+            
+        if status == "downloading":
+            pct = (state["downloaded_bytes"] / state["total_bytes"] * 100) if state["total_bytes"] else 0
+            bar_len = 30
+            filled_len = int(bar_len * pct / 100)
+            bar = '=' * filled_len + '-' * (bar_len - filled_len)
+            
+            speed_mb = (state["speed_kbps"] / 1024) if state["speed_kbps"] else 0.0
+            eta = state["eta_seconds"]
+            eta_str = f"{eta // 60}m {eta % 60}s" if eta else "Calculating..."
+            
+            sys.stdout.write(f"\rDownloading {state['current_file']}: [ {pct:5.1f}% ] [{bar}] {state['downloaded_bytes']/(1024*1024):.1f}MB/{state['total_bytes']/(1024*1024):.1f}MB | {speed_mb:.2f}MB/s | ETA: {eta_str}")
+            sys.stdout.flush()
+        else:
+            if status != last_phase:
+                print(f"\n[*] {status.upper()} {state.get('current_dataset', '')}...")
+                last_phase = status
+                
+        time.sleep(0.5)
+
 def run_backup(target_path: str):
     """Backs up SQLite database and config."""
     log_message(f"Creating local backup to: {target_path}")
@@ -841,6 +1034,27 @@ def main():
     subparsers.add_parser("rollback", help="Restore the previous installed version from backup")
     subparsers.add_parser("reset", help="Reset all settings, configuration and database files to empty defaults")
 
+    # Command: datasets
+    datasets_parser = subparsers.add_parser("datasets", help="Manage MP Mitra local datasets (download, verify, repair)")
+    datasets_parser.add_argument(
+        "action",
+        nargs="?",
+        default="status",
+        choices=["status", "update", "verify", "repair"],
+        help="Dataset action: status (default), update, verify, repair"
+    )
+    datasets_parser.add_argument(
+        "--id",
+        dest="dataset_id",
+        default="all",
+        help="Dataset ID to target (default: all)"
+    )
+    datasets_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-download even if already installed"
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -892,6 +1106,16 @@ def main():
                 if db_path.exists(): db_path.unlink()
             if LOG_FILE.exists(): LOG_FILE.unlink()
             print("[OK] Reset complete. Run 'mpmitra start' to rebuild defaults.")
+    elif args.command == "datasets":
+        action = args.action
+        if action == "status" or action is None:
+            cli_datasets_status()
+        elif action == "update":
+            cli_datasets_update(dataset_id=args.dataset_id, force=args.force)
+        elif action == "verify":
+            cli_datasets_verify()
+        elif action == "repair":
+            cli_datasets_repair()
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == "--server":

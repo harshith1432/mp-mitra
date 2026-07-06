@@ -5,7 +5,16 @@ from sqlalchemy import select
 from app.database.connection import engine, SessionLocal, Base
 from app.database.models import IngestionState, Pincode, School, Road, HealthCentre, Habitation, WaterQuality
 
-DATASET_DIR = r"d:\projects softwares\hackthon pm\DATASET\Village Amenities"
+# Ensure database module is resolvable
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from app.database.dataset_manager import dataset_manager
+
+# Attempt to scan and import datasets from the local workspace (Village Amenities)
+here = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(here, "..", "..", ".."))
+dataset_manager.import_local_datasets_from_workspace(root_dir)
+
+DATASET_DIR = dataset_manager.get_dataset_dir()
 
 def check_ingestion_completed():
     db = SessionLocal()

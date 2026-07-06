@@ -697,3 +697,14 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+
+/* RTL Layout Support */
+[dir="rtl"] {
+  text-align: right;
+}
+[dir="rtl"] .gov-header-desktop {
+  flex-direction: row-reverse;
+}
+[dir="rtl"] .gov-header-desktop > div:last-child {
+  flex-direction: row-reverse;
+}

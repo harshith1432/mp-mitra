@@ -102,6 +102,31 @@ graph TD
     G --> H[SHAP Attribution Agent]
 ```
 
+
+### AI pipeline Specifications
+
+| Agent / Model | AI Technology / Model Used | Input Data (What it takes) | Output Generated (What it gives) | Role in Constituency Decision Making |
+| :--- | :--- | :--- | :--- | :--- |
+| **🗣️ Indic Translation Agent** | Whisper / SeamlessM4T (STT) + Llama-3 (translation) | Voice recordings or text in any of 22 Scheduled Indian languages | Normalized English text transcription + Language Detected | Allows all citizens to submit suggestions in their native regional language. |
+| **👁️ YOLOv11 Defect Agent** | YOLOv11 (Fine-tuned Object Detection) | Citizen-uploaded photographs of infrastructure deficits | Bounding boxes, identified defect classes (`Pothole`, `Broken Light`, `Garbage`, etc.), & confidence | Automatically verifies the existence and severity of reported physical defects. |
+| **📄 OCR & VLM Scanner Agent** | Tesseract OCR / Qwen2-VL | Official PDF letters, meeting minutes, and village panchayat reports | Structured JSON containing requested budgets, project scopes, and locations | Ingests and registers official paper-based development requests automatically. |
+| **🔗 Clustering & Duplicate Agent** | TF-IDF Vectorizer + Cosine Similarity | Newly submitted raw complaint texts in the area | Grouped complaint clusters (similarity threshold $>0.55$) with support counts | Consolidates individual complaints into macro "Grievance Events" to prevent spam. |
+| **📖 RAG Policy Advisor Agent** | ChromaDB / Qdrant + SentenceTransformers + Llama-3.1 | Central policies (PMGSY, JJM, NHM, RTE) & MP natural language queries | Citation-backed advisory responses and matching local statistics | Guides the MP on whether a project matches national policy rules and local needs. |
+| **⚖️ Knapsack ILP Optimizer** | Mixed Integer Linear Programming (MILP via PuLP) | Candidate projects, budget limits, and importance weights | Mathematical globally-optimal project selection portfolio | Solves the best projects checklist that maximizes development impact under budget. |
+| **📊 SHAP Attribution Agent** | Shapley Additive Explanations (SHAP) | Prioritized project portfolios | Mathematical attribution percentages for each priority factor (Demand, Urgency, etc.) | Explains the exact mathematical reasoning behind every automated recommendation. |
+
+---
+
+## 🌐 22 Scheduled Indian Languages Multi-Language Support
+
+MP Mitra features a complete localization switcher on every screen, allowing both citizens and representatives to toggle the interface dynamically between English and all **22 official languages of India** (Hindi, Kannada, Telugu, Tamil, Marathi, Gujarati, Bengali, Malayalam, Punjabi, Odia, Urdu, Assamese, Sanskrit, Kashmiri, Konkani, Nepali, Manipuri, Bodo, Dogri, Maithili, Santali, and Sindhi).
+
+* **How it works**: Uses static local dictionaries (zero-dependency, offline-first) with a global React `LanguageContext`.
+* **RTL Layouts**: Automatically mirrors layout direction (`dir="rtl"`) when switching to right-to-left scripts such as Urdu and Kashmiri.
+* **Persistent Settings**: Local storage remembers user language preferences across reloads.
+
+---
+
 ### 1. 🗣️ Indic Translation Agent
 * **File Location:** [translate_agent.py](file:///d:/projects%20softwares/hackthon%20pm/backend/app/agents/translate_agent.py)
 * **Functionality:** Translates text and audio inputs in 22 official Indic languages (Hindi, Kannada, Telugu, Tamil, Marathi, Gujarati, etc.) into English.

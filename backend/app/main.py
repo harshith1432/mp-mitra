@@ -148,6 +148,50 @@ def get_health():
     }
 
 
+from app.database.dataset_manager import dataset_manager, download_state
+
+@app.get("/api/datasets")
+def get_datasets():
+    return {
+        "datasets": dataset_manager.manifest["datasets"],
+        "provider": dataset_manager.manifest.get("provider", "default"),
+        "provider_url": dataset_manager.manifest.get("provider_url", ""),
+        "datasets_dir": dataset_manager.get_dataset_dir(),
+        "download_state": download_state
+    }
+
+@app.post("/api/datasets/configure")
+def configure_datasets(data: dict):
+    provider = data.get("provider", "default")
+    provider_url = data.get("provider_url", "")
+    dataset_manager.update_provider(provider, provider_url)
+    return {"status": "success"}
+
+@app.post("/api/datasets/update")
+def update_datasets(data: dict):
+    dataset_id = data.get("dataset_id", "all")
+    force = data.get("force", False)
+    res = dataset_manager.start_download_task(dataset_id, force=force)
+    return {"status": res}
+
+@app.post("/api/datasets/repair")
+def repair_datasets(data: dict):
+    dataset_id = data.get("dataset_id", "all")
+    res = dataset_manager.start_download_task(dataset_id, force=True)
+    return {"status": res}
+
+@app.post("/api/datasets/remove")
+def remove_datasets(data: dict):
+    dataset_id = data.get("dataset_id")
+    if not dataset_id:
+        return {"status": "error", "message": "Missing dataset_id"}
+    try:
+        dataset_manager.remove_dataset(dataset_id)
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 # ─── Register Routers ─────────────────────────────────────────────────────────
 from app.routing.constituency import router as constituency_router
 from app.routing.citizen import router as citizen_router
