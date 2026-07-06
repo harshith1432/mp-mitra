@@ -34,7 +34,7 @@ MP Mitra utilizes 6 national government datasets for demographic, infrastructure
 
 ### 1. Download Datasets
 Download the optimized dataset package zip file (~121 MB) from Google Drive here:
-👉 **[DOWNLOAD MP MITRA DATASETS (ZIP)]()** *(Paste your Google Drive link here)*
+👉 **[DOWNLOAD MP MITRA DATASETS (ZIP)](https://drive.google.com/file/d/1-qEFBlpDg3jDZV7HwFefOB7O-LCTa0JI/view?usp=sharing)**
 
 ### 2. Extract & Place Files
 Extract the contents of the downloaded `MPMitraDatasets.zip` file directly into the following path under your project root directory:
