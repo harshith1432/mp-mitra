@@ -200,7 +200,9 @@ def start_services(open_browser: bool = True):
                 url = f"http://127.0.0.1:{port}"
                 log_message(f"Opening browser at {url}...")
                 webbrowser.open(url)
-                return
+            # Run silent background update check after startup
+            _auto_check_update_background()
+            return
             
     log_message("[WARN] Service started but did not respond to health check in time. Please view logs.")
 
@@ -520,59 +522,103 @@ def manage_config(action: str, key: str, value: Optional[str] = None):
             for k in config_manager.config["SECRETS"].keys():
                 print(f"  - {k}")
 
+def _updater_path_setup():
+    """Prepares sys.path so the updater module can be imported."""
+    backend_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
+    if backend_path not in sys.path:
+        sys.path.insert(0, backend_path)
+
+
 def run_check_update():
-    """Checks for updates using the enterprise updater module."""
+    """Checks GitHub for the latest release and displays results."""
+    _updater_path_setup()
     try:
-        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
         from app.updater import display_check_update, get_local_version
-        local = get_local_version()
-        display_check_update(local)
+        display_check_update(get_local_version())
     except ImportError:
-        # Fallback: basic GitHub API check
-        log_message("[*] Checking for updates...")
+        # Standalone fallback (no backend dir accessible)
+        print("")
+        print(f"Checking for updates...")
+        print(f"Current Version : {VERSION}")
+        api_url = "https://api.github.com/repos/harshith1432/mp-mitra/releases/latest"
         try:
-            api_url = "https://api.github.com/repos/harshith1432/mp-mitra/releases/latest"
-            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Updater'})
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Updater/1.0'})
             with urllib.request.urlopen(req, timeout=8) as r:
                 data = json.loads(r.read().decode())
-                tag = data.get("tag_name", "").lstrip("v")
+                tag = data.get("tag_name", "").lstrip("vV")
                 if tag:
-                    log_message(f"Latest release: v{tag}  (Current: v{VERSION})")
+                    print(f"Latest Version  : {tag}")
+                    print("")
+                    if tag != VERSION:
+                        print("[UPDATE AVAILABLE]")
+                        print("Run:  mpmitra update  to install.")
+                    else:
+                        print("[OK] You are using the latest version.")
                 else:
-                    log_message("No published release found.")
+                    print("Latest Version  : Not found")
+                    print("")
+                    print("[INFO] No published releases found on GitHub.")
         except urllib.error.HTTPError as e:
+            print(f"Latest Version  : Unavailable")
+            print("")
             if e.code == 404:
-                log_message("No published release found on GitHub.")
+                print("[INFO] No published releases found on GitHub.")
+                print("       To publish a release: git tag v1.0.1 && git push --tags")
             elif e.code == 403:
-                log_message("GitHub API rate limit exceeded. Try again later.")
+                print("[WARN] GitHub API rate limit exceeded. Try again in a few minutes.")
             else:
-                log_message(f"Update check failed (HTTP {e.code}).")
+                print(f"[WARN] GitHub returned HTTP {e.code}.")
         except urllib.error.URLError:
-            log_message("Network unavailable. Check your internet connection.")
-        except Exception as e:
-            log_message(f"Update check failed: {e}")
+            print(f"Latest Version  : Unavailable")
+            print("")
+            print("[WARN] Unable to reach GitHub. Check your internet connection.")
+        except Exception:
+            print(f"Latest Version  : Unavailable")
+            print("")
+            print("[WARN] Update check could not complete. Try again later.")
+        print("")
 
 
 def run_update():
-    """Downloads and installs the latest update using the enterprise updater module."""
+    """Downloads and installs the latest release."""
+    _updater_path_setup()
     try:
-        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
         from app.updater import run_update as _run_update, get_local_version
-        local = get_local_version()
-        _run_update(local)
-    except ImportError as e:
-        log_message(f"[ERROR] Updater module not available: {e}")
-        log_message("Run check-update to see if a new version exists.")
+        _run_update(get_local_version())
+    except ImportError:
+        print("")
+        print("[WARN] Updater module not available.")
+        print("       Run: mpmitra check-update  to see if a new version exists.")
+        print("")
 
 
 def run_rollback():
-    """Restores previous version from backup using the enterprise updater module."""
+    """Restores the previous version from backup."""
+    _updater_path_setup()
     try:
-        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
         from app.updater import run_rollback as _run_rollback
         _run_rollback()
-    except ImportError as e:
-        log_message(f"[ERROR] Updater module not available: {e}")
+    except ImportError:
+        print("")
+        print("[WARN] Rollback module not available.")
+        print("")
+
+
+def _auto_check_update_background():
+    """Runs a silent update check in a background thread after mpmitra start."""
+    import threading
+    def _worker():
+        try:
+            time.sleep(3)  # Wait 3s to not race with startup messages
+            _updater_path_setup()
+            from app.updater import auto_check_on_start, get_local_version
+            auto_check_on_start(get_local_version(), silent=True)
+        except Exception:
+            pass  # Never crash the background thread
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    return t
+
 
 def main():
     parser = argparse.ArgumentParser(description="MP Mitra Command Line Interface (CLI) Service Manager")
