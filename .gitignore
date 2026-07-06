@@ -8,8 +8,17 @@ node_modules/
 .firebase/
 mp-mitra-firebase-adminsdk-fbsvc-a0bb1ec47e.json
 
-# Backend Environment & Caches
+# Environment Files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+frontend/.env
 backend/.env
+
+# Backend Caches & Venv
 backend/venv/
 venv/
 __pycache__/
