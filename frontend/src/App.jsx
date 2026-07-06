@@ -8,6 +8,7 @@ import WhatsAppSimulator from './components/WhatsAppSimulator';
 import ScraperConsole from './components/ScraperConsole';
 import DatasetManagerConsole from './components/DatasetManagerConsole';
 import { useLanguage } from './context/LanguageContext';
+import API_BASE from './apiConfig';
 
 import fallbackDistrictsMap from './districts_data.json';
 import districtCoordsMap from './district_coords.json';
@@ -1112,7 +1113,7 @@ function RecommendationsPanel({ sName, dName }) {
       const params = new URLSearchParams({ state: sName, district: dName, limit: 60 });
       if (pf !== 'ALL') params.append('priority', pf);
       if (cf !== 'ALL') params.append('category', cf);
-      const res = await fetch(`/api/recommendations/priorities?${params}`);
+      const res = await fetch(`${API_BASE}/api/recommendations/priorities?${params}`);
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const json = await res.json();
       if (json.status === 'error') throw new Error(json.error || 'Failed to load');
@@ -2393,6 +2394,7 @@ export default function App() {
   };
 
   const dName = selectedDistrict ? (selectedDistrict.charAt(0).toUpperCase() + selectedDistrict.slice(1).toLowerCase()) : 'Mandya';
+  const sName = selectedState ? (selectedState.charAt(0).toUpperCase() + selectedState.slice(1).toLowerCase()) : 'Karnataka';
 
   // Citizen kiosk states
   const [complaintText, setComplaintText] = useState('');
@@ -2674,7 +2676,7 @@ export default function App() {
 
   useEffect(() => {
     // Fetch live states from API; fallback list already loaded — just update if API responds
-    fetch('/api/constituency/states')
+    fetch(`${API_BASE}/api/constituency/states`)
       .then(r => r.json())
       .then(d => {
         if (d.states && d.states.length > 0) {
@@ -2701,7 +2703,7 @@ export default function App() {
       setSelectedDistrict(firstDistrict);
     }
     
-    fetch(`/api/constituency/districts?state=${selectedState}`)
+    fetch(`${API_BASE}/api/constituency/districts?state=${selectedState}`)
       .then(r => r.json())
       .then(d => {
         if (d.districts && d.districts.length > 0) {
@@ -2719,7 +2721,7 @@ export default function App() {
   useEffect(() => {
     if (!selectedState || !selectedDistrict) return;
     setLoading(true);
-    fetch(`/api/constituency/data?state=${selectedState}&district=${selectedDistrict}`)
+    fetch(`${API_BASE}/api/constituency/data?state=${selectedState}&district=${selectedDistrict}`)
       .then(r => {
         if (!r.ok) throw new Error("API failed");
         return r.json();
@@ -2790,17 +2792,17 @@ export default function App() {
     if (imageFile) fd.append('image_file', imageFile);
     if (docFile) fd.append('doc_file', docFile);
     if (voiceUsed) { fd.append('voice_file', new Blob(['voice-recorded'],{type:'audio/wav'}), 'voice.wav'); }
-    fetch('/api/citizen/submit', { method:'POST', body:fd })
+    fetch(`${API_BASE}/api/citizen/submit`, { method:'POST', body:fd })
       .then(r=>r.json()).then(data => {
         setSubmissionResult(data); setSubmittingComplaint(false); setVoiceUsed(false);
         let i = 0;
-        const iv = setInterval(() => { if (i < data.agent_logs.length) { setSubmissionLogs(p=>[...p,data.agent_logs[i]]); i++; } else { clearInterval(iv); fetch(`/api/constituency/data?state=${selectedState}&district=${selectedDistrict}`).then(r=>r.json()).then(d=>setConstituencyData(d)); } }, 800);
+        const iv = setInterval(() => { if (i < data.agent_logs.length) { setSubmissionLogs(p=>[...p,data.agent_logs[i]]); i++; } else { clearInterval(iv); fetch(`${API_BASE}/api/constituency/data?state=${selectedState}&district=${selectedDistrict}`).then(r=>r.json()).then(d=>setConstituencyData(d)); } }, 800);
       }).catch(()=>setSubmittingComplaint(false));
   };
 
   const runOptimization = () => {
     setOptimizing(true); setOptimizationResult(null);
-    fetch('/api/prioritize/optimize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ state:selectedState, district:selectedDistrict, budget_cr:budgetCr, weight_demand:weights.demand, weight_benefit:weights.benefit, weight_urgency:weights.urgency, weight_cost:weights.cost, weight_gap:weights.gap }) })
+    fetch(`${API_BASE}/api/prioritize/optimize`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ state:selectedState, district:selectedDistrict, budget_cr:budgetCr, weight_demand:weights.demand, weight_benefit:weights.benefit, weight_urgency:weights.urgency, weight_cost:weights.cost, weight_gap:weights.gap }) })
       .then(r=>r.json()).then(data => { setOptimizationResult(data); setOptimizing(false); confetti({particleCount:100,spread:60,origin:{y:0.6}}); })
       .catch(()=>setOptimizing(false));
   };
@@ -2810,7 +2812,7 @@ export default function App() {
     const userMsg = { sender:'user', text:copilotQuery };
     setCopilotHistory(p=>[...p,userMsg]); setQueryingCopilot(true); setCopilotLogs([]);
     const q = copilotQuery; setCopilotQuery('');
-    fetch('/api/copilot/query', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ state:selectedState, district:selectedDistrict, message:q }) })
+    fetch(`${API_BASE}/api/copilot/query`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ state:selectedState, district:selectedDistrict, message:q }) })
       .then(r=>r.json()).then(data => {
         setQueryingCopilot(false);
         let i = 0;
@@ -2843,7 +2845,7 @@ export default function App() {
   const handleAdminUpload = e => {
     e.preventDefault(); if (!adminFile) return; setUploading(true); setUploadResult(null); setUploadLogs([]);
     const fd = new FormData(); fd.append('csv_file', adminFile);
-    fetch('/api/admin/upload-dataset', { method:'POST', body:fd })
+    fetch(`${API_BASE}/api/admin/upload-dataset`, { method:'POST', body:fd })
       .then(r=>r.json()).then(data => {
         setUploadResult(data); setUploading(false);
         let i = 0;

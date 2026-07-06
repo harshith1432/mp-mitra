@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Database, RefreshCw, Download, Trash2, ShieldAlert, CheckCircle, Play, AlertTriangle, Settings, HelpCircle, HardDrive } from 'lucide-react';
+import API_BASE from '../apiConfig';
 
 export default function DatasetManagerConsole() {
   const [data, setData] = useState(null);
@@ -14,7 +15,7 @@ export default function DatasetManagerConsole() {
   // Refresh data from API
   const refreshData = async () => {
     try {
-      const response = await fetch('/api/datasets');
+      const response = await fetch(`${API_BASE}/api/datasets`);
       if (response.ok) {
         const json = await response.json();
         setData(json);
@@ -55,7 +56,7 @@ export default function DatasetManagerConsole() {
   const handleConfigure = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/datasets/configure', {
+      const response = await fetch(`${API_BASE}/api/datasets/configure`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, provider_url: providerUrl })
@@ -71,7 +72,7 @@ export default function DatasetManagerConsole() {
 
   const handleUpdate = async (datasetId) => {
     try {
-      const response = await fetch('/api/datasets/update', {
+      const response = await fetch(`${API_BASE}/api/datasets/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataset_id: datasetId })
@@ -90,7 +91,7 @@ export default function DatasetManagerConsole() {
       return;
     }
     try {
-      const response = await fetch('/api/datasets/repair', {
+      const response = await fetch(`${API_BASE}/api/datasets/repair`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataset_id: datasetId })
@@ -109,7 +110,7 @@ export default function DatasetManagerConsole() {
       return;
     }
     try {
-      const response = await fetch('/api/datasets/remove', {
+      const response = await fetch(`${API_BASE}/api/datasets/remove`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataset_id: datasetId })

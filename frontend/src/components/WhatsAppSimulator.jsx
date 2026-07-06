@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Image, MapPin, Mic, MoreVertical, Check, CheckCheck } from 'lucide-react';
+import API_BASE from '../apiConfig';
 
 export default function WhatsAppSimulator() {
   const [phone, setPhone] = useState('+91 99800 12345');
@@ -23,7 +24,7 @@ export default function WhatsAppSimulator() {
   const [blockList, setBlockList] = useState([]);
   const [villageList, setVillageList] = useState([]);
 
-  const API_BASE = '';
+  // API_BASE imported from apiConfig.js
 
   // Fetch States on mount
   useEffect(() => {

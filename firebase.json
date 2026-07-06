@@ -9,20 +9,6 @@
     ],
     "rewrites": [
       {
-        "source": "/api/**",
-        "run": {
-          "serviceId": "mp-mitra-backend",
-          "region": "asia-south1"
-        }
-      },
-      {
-        "source": "/ws/**",
-        "run": {
-          "serviceId": "mp-mitra-backend",
-          "region": "asia-south1"
-        }
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }

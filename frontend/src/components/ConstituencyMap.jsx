@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Search, Map as MapIcon, Layers, Compass, X, Info, Mic } from 'lucide-react';
 import districtCoordsMap from '../district_coords.json';
+import API_BASE from '../apiConfig';
 
 export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState = 'KARNATAKA' }) {
   // Resolve the map centre from the pre-built district_coords lookup table.
@@ -37,7 +38,7 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
   const [intelReport, setIntelReport] = useState('');
   const [showIntelModal, setShowIntelModal] = useState(false);
 
-  const API_BASE = '';
+  // API_BASE imported from apiConfig.js
 
   // Helper to resolve priority colors dynamically
   const getPriorityColor = (priority) => {
