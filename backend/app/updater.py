@@ -496,8 +496,32 @@ def run_update(local: dict) -> None:
             print("     Follow the on-screen prompts to complete the update.")
             print("     The application will restart automatically after installation.")
         else:
-            print(f"[INFO] Update package downloaded: {tmp_file}")
-            print("       Extract and run the installer to complete the update.")
+            import zipfile
+            # Resolve install directory
+            # If we are in backend/app/updater.py, the project root is 3 levels up
+            current_file_dir = Path(__file__).parent.resolve()
+            if current_file_dir.name == "app" and current_file_dir.parent.name == "backend":
+                install_dir = current_file_dir.parent.parent
+            else:
+                install_dir = Path(sys.argv[0]).parent.resolve()
+
+            print(f"Extracting update files to: {install_dir}...")
+            with zipfile.ZipFile(tmp_file, 'r') as zip_ref:
+                for member in zip_ref.infolist():
+                    target_path = install_dir / member.filename
+                    if member.is_dir():
+                        target_path.mkdir(parents=True, exist_ok=True)
+                        continue
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    try:
+                        with zip_ref.open(member) as source, open(target_path, "wb") as target:
+                            shutil.copyfileobj(source, target)
+                    except Exception as e:
+                        print(f"    [WARN] Failed to overwrite {member.filename}: {e}")
+            
+            print("")
+            print("[OK] Update completed successfully!")
+            print(f"     All files have been updated to version {remote_version}.")
     except Exception as e:
         print(f"[ERROR] Could not launch installer: {e}")
         _log(f"Failed to launch installer: {e}")
