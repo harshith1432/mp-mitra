@@ -194,7 +194,8 @@ def start_services(open_browser: bool = True):
             print(f"Uptime: {uptime}\n")
             
             if open_browser:
-                url = f"http://{host}:{port}"
+                browser_host = "localhost" if host in ("127.0.0.1", "0.0.0.0") else host
+                url = f"http://{browser_host}:{port}"
                 log_message(f"Opening browser at {url}...")
                 webbrowser.open(url)
             sys.exit(0)
@@ -307,7 +308,8 @@ def start_services(open_browser: bool = True):
                         log_message(f"AI: {health_data.get('ai')}")
                         
                         if open_browser:
-                            url = f"http://{host}:{port}"
+                            browser_host = "localhost" if host in ("127.0.0.1", "0.0.0.0") else host
+                            url = f"http://{browser_host}:{port}"
                             log_message(f"Opening browser at {url}...")
                             webbrowser.open(url)
                         return
