@@ -25,7 +25,47 @@ powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.c
    mpmitra version
    ```
 
+
 ---
+
+## 📦 Datasets Setup
+
+MP Mitra utilizes 6 national government datasets for demographic, infrastructure, health, and education planning across all Indian villages. Due to GitHub's file size limits, these datasets must be downloaded separately and placed in the project directory.
+
+### 1. Download Datasets
+Download the optimized dataset package zip file (~121 MB) from Google Drive here:
+👉 **[DOWNLOAD MP MITRA DATASETS (ZIP)]()** *(Paste your Google Drive link here)*
+
+### 2. Extract & Place Files
+Extract the contents of the downloaded `MPMitraDatasets.zip` file directly into the following path under your project root directory:
+```
+DATASET/Village Amenities/
+```
+Once placed, the directory structure should look like this:
+```
+DATASET/
+└── Village Amenities/
+    ├── Basic_habitation_info_2012_04_01.csv
+    ├── geocode_health_centre.csv
+    ├── pincode.csv
+    ├── road.csv
+    ├── school.csv
+    └── Water_quality_affected_habitation_2012_04_01.csv
+```
+
+### 3. Active Datasets Summary
+
+| Dataset File | Description | Records | Key Columns Used |
+| :--- | :--- | :--- | :--- |
+| **`pincode.csv`** | All-India Pincode Directory | 150K+ | Pincode, District, State, Latitude, Longitude |
+| **`geocode_health_centre.csv`** | Geocoded Health Center Directory | 200K+ | Facility Name, Type, Subdistrict, Latitude, Longitude |
+| **`road.csv`** | PMGSY Road Network Database | 100K+ | Road Name, Surface Type, Connected Habitations, Cost, Length |
+| **`school.csv`** | National UDISE School Database | 1.5M+ | School Name, Village, Students Count, Teachers Count, Geolocations |
+| **`Basic_habitation_info_2012_04_01.csv`** | Census Habitation Demographics | 1.2M+ | Village, Habitation, SC/ST Population, General Population |
+| **`Water_quality_affected_habitation_2012_04_01.csv`** | Drinking Water Quality Contaminants | 100K+ | Habitation, Contaminant (Fluoride, Arsenic, Iron, etc.), Status |
+
+---
+
 
 ## 🛠️ CLI Reference Manual
 
