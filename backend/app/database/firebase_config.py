@@ -10,9 +10,11 @@ def initialize_firebase():
     global db, bucket
     # Check if Firebase is already initialized to avoid duplicate app errors
     if not firebase_admin._apps:
-        # 1. Try loading credentials from a service account JSON string in .env
-        service_account_env = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
-        bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET")
+        from app.config_manager import config_manager
+        
+        # 1. Try loading credentials from a service account JSON string in config/env
+        service_account_env = config_manager.get_secret("FIREBASE_SERVICE_ACCOUNT_JSON")
+        bucket_name = config_manager.get("FIREBASE_STORAGE_BUCKET") or os.getenv("FIREBASE_STORAGE_BUCKET")
 
         if service_account_env:
             try:
@@ -28,7 +30,7 @@ def initialize_firebase():
                 firebase_admin.initialize_app(options={'storageBucket': bucket_name})
         else:
             # 2. Try loading from a path to a service account JSON file
-            cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
+            cred_path = config_manager.get("FIREBASE_SERVICE_ACCOUNT_PATH") or os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
             if cred_path and os.path.exists(cred_path):
                 cred = credentials.Certificate(cred_path)
                 firebase_admin.initialize_app(cred, {

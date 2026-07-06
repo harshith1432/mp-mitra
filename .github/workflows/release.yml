@@ -1,0 +1,69 @@
+name: MP Mitra Desktop & CLI Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Build Frontend Static Assets
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          # Install core requirements
+          pip install -r backend/requirements.txt
+
+      - name: Compile Desktop App via PyInstaller
+        run: |
+          # Compile mpmitra CLI and backend server into a single distribution folder
+          pyinstaller --name=mpmitra --onedir --clean --noconfirm --collect-all app --add-data "frontend/dist;frontend/dist" --paths backend mpmitra.py
+
+      - name: Calculate Package Integrity Checksums
+        shell: pwsh
+        run: |
+          $hash = Get-FileHash -Path "dist/mpmitra/mpmitra.exe" -Algorithm SHA256
+          $hash.Hash | Out-File -FilePath "dist/mpmitra/SHA256SUMS"
+          Write-Host "Package SHA-256 Checksum: $($hash.Hash)"
+
+      - name: Zip Distribution Directory
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/mpmitra/*" -DestinationPath "dist/mpmitra-windows-x64.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/mpmitra-windows-x64.zip
+            dist/mpmitra/SHA256SUMS
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

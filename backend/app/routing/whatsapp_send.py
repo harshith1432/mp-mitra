@@ -7,14 +7,16 @@ Set WHATSAPP_MODE in .env: "twilio" | "meta" | "simulator"
 import os, json, httpx, urllib.parse
 from typing import List, Dict, Optional
 
-WHATSAPP_MODE = os.getenv("WHATSAPP_MODE", "simulator")
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH_TOKEN  = os.getenv("TWILIO_AUTH_TOKEN", "")
-TWILIO_FROM        = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
-META_TOKEN         = os.getenv("META_WHATSAPP_TOKEN", "")
-META_PHONE_ID      = os.getenv("META_PHONE_NUMBER_ID", "")
-META_API_URL       = f"https://graph.facebook.com/v19.0/{META_PHONE_ID}/messages"
-PUBLIC_BACKEND_URL = os.getenv("PUBLIC_BACKEND_URL", "http://localhost:8000").rstrip("/")
+from app.config_manager import config_manager
+
+WHATSAPP_MODE = config_manager.get("WHATSAPP_MODE") or os.getenv("WHATSAPP_MODE", "simulator")
+TWILIO_ACCOUNT_SID = config_manager.get_secret("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN  = config_manager.get_secret("TWILIO_AUTH_TOKEN")
+TWILIO_FROM        = config_manager.get("TWILIO_WHATSAPP_FROM") or os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+META_TOKEN         = config_manager.get_secret("META_WHATSAPP_TOKEN")
+META_PHONE_ID      = config_manager.get("META_PHONE_NUMBER_ID") or os.getenv("META_PHONE_NUMBER_ID", "")
+META_API_URL       = f"https://graph.facebook.com/v19.0/{META_PHONE_ID}/messages" if META_PHONE_ID else ""
+PUBLIC_BACKEND_URL = config_manager.get("PUBLIC_BACKEND_URL") or os.getenv("PUBLIC_BACKEND_URL", "http://localhost:8000").rstrip("/")
 
 # Temporary store for web dropdown selections
 _pending_options: Dict[str, Dict] = {}

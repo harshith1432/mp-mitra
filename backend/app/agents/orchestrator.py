@@ -20,11 +20,12 @@ from app.routing.whatsapp_send import send_text
 # ── LLM Caller (Multi-Provider Support) ───────────────────────────────────────
 def call_llm(system_prompt: str, user_prompt: str) -> str:
     """Invokes the selected LLM provider (Groq HTTPX, Hugging Face, Gemini, or fallback mock)."""
-    provider = os.getenv("LLM_PROVIDER", "groq").lower()
+    from app.config_manager import config_manager
+    provider = config_manager.get("LLM_PROVIDER") or os.getenv("LLM_PROVIDER", "groq").lower()
     
     # 1. Groq via HTTPX (Zero-dependency, direct fast API endpoint)
     if provider == "groq":
-        groq_key = os.getenv("GROQ_API_KEY")
+        groq_key = config_manager.get_secret("GROQ_API_KEY")
         if groq_key:
             try:
                 import httpx
@@ -69,7 +70,7 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
 
     # 2. Hugging Face Serverless API (Free tier cascading model support)
     if provider == "huggingface":
-        hf_token = os.getenv("HUGGINGFACE_API_KEY")
+        hf_token = config_manager.get_secret("HUGGINGFACE_API_KEY")
         if hf_token:
             try:
                 import httpx
@@ -114,7 +115,7 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
     
     # 3. Google Gemini Fallback (most likely available via system keys)
     if provider == "gemini":
-        gemini_key = os.getenv("GOOGLE_API_KEY")
+        gemini_key = config_manager.get_secret("GOOGLE_API_KEY") or config_manager.get_secret("GEMINI_API_KEY")
         if gemini_key:
             try:
                 import google.generativeai as genai
@@ -139,7 +140,7 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
 
     # 4. Groq SDK fallback
     if provider == "groq_sdk":
-        groq_key = os.getenv("GROQ_API_KEY")
+        groq_key = config_manager.get_secret("GROQ_API_KEY")
         if groq_key:
             try:
                 from groq import Groq

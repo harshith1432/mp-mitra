@@ -174,3 +174,16 @@ def startup_event():
 
     crawler_thread = threading.Thread(target=run_crawler_loop, daemon=True)
     crawler_thread.start()
+
+# Serve built frontend static assets if dist exists (Production/Desktop bundle support)
+import sys
+if getattr(sys, 'frozen', False):
+    # PyInstaller bundle path
+    bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    dist_path = os.path.join(bundle_dir, "frontend", "dist")
+else:
+    # Standard local environment path
+    dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+
+if os.path.exists(dist_path):
+    app.mount("/", StaticFiles(directory=dist_path, html=True), name="frontend")
