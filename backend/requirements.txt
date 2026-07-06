@@ -9,7 +9,6 @@ uvicorn[standard]==0.30.6
 python-multipart==0.0.12
 pydantic==2.9.2
 python-dotenv==1.0.1
-starlette==0.41.2
 
 # ── Database ──────────────────────────────────────────────────────────────────
 psycopg2-binary==2.9.9
