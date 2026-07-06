@@ -497,7 +497,7 @@ function FunctionLevelDashboard({ selectedState, selectedDistrict, constituencyD
     }
 
     if (url) {
-      fetch(url)
+      fetch(`${API_BASE}${url}`)
         .then(r => r.json())
         .then(data => {
           setDetailData(data.records || []);
@@ -1389,7 +1389,7 @@ function VillageProjectSearch({ selectedState, selectedDistrict }) {
         setBlocks(Object.keys(tree).sort());
       })
       .catch(() => {
-        fetch(`/api/constituency/filter-options?state=${selectedState}&district=${selectedDistrict}`)
+        fetch(`${API_BASE}/api/constituency/filter-options?state=${selectedState}&district=${selectedDistrict}`)
           .then(r => r.json())
           .then(data => {
             setBlocks(data.blocks || []);
@@ -1424,7 +1424,7 @@ function VillageProjectSearch({ selectedState, selectedDistrict }) {
     if (geoTree && geoTree[searchBlock]) {
       setPanchayats(Object.keys(geoTree[searchBlock]).sort());
     } else {
-      fetch(`/api/constituency/filter-options?state=${selectedState}&district=${selectedDistrict}&block=${searchBlock}`)
+      fetch(`${API_BASE}/api/constituency/filter-options?state=${selectedState}&district=${selectedDistrict}&block=${searchBlock}`)
         .then(r => r.json())
         .then(data => {
           setPanchayats(data.panchayats || []);
@@ -1452,7 +1452,7 @@ function VillageProjectSearch({ selectedState, selectedDistrict }) {
     if (geoTree && geoTree[searchBlock] && geoTree[searchBlock][searchPanchayat]) {
       setVillages(Object.keys(geoTree[searchBlock][searchPanchayat]).sort());
     } else {
-      fetch(`/api/constituency/filter-options?state=${selectedState}&district=${selectedDistrict}&block=${searchBlock}&panchayat=${searchPanchayat}`)
+      fetch(`${API_BASE}/api/constituency/filter-options?state=${selectedState}&district=${selectedDistrict}&block=${searchBlock}&panchayat=${searchPanchayat}`)
         .then(r => r.json())
         .then(data => {
           setVillages(data.villages || []);
@@ -1476,7 +1476,7 @@ function VillageProjectSearch({ selectedState, selectedDistrict }) {
     if (geoTree && geoTree[searchBlock] && geoTree[searchBlock][searchPanchayat] && geoTree[searchBlock][searchPanchayat][searchVillage]) {
       setHabitations(geoTree[searchBlock][searchPanchayat][searchVillage].sort());
     } else {
-      fetch(`/api/constituency/filter-options?state=${selectedState}&district=${selectedDistrict}&block=${searchBlock}&panchayat=${searchPanchayat}&village=${searchVillage}`)
+      fetch(`${API_BASE}/api/constituency/filter-options?state=${selectedState}&district=${selectedDistrict}&block=${searchBlock}&panchayat=${searchPanchayat}&village=${searchVillage}`)
         .then(r => r.json())
         .then(data => {
           setHabitations(data.habitations || []);
@@ -1502,7 +1502,7 @@ function VillageProjectSearch({ selectedState, selectedDistrict }) {
     if (searchQualityParam) params.append('quality_parameter', searchQualityParam);
     if (searchYear) params.append('year', searchYear);
 
-    fetch(`/api/constituency/search-projects?${params.toString()}`)
+    fetch(`${API_BASE}/api/constituency/search-projects?${params.toString()}`)
       .then(r => {
         if (!r.ok) throw new Error("Search failed");
         return r.json();
@@ -2441,7 +2441,7 @@ export default function App() {
   useEffect(() => {
     if (!selectedState || !selectedDistrict || activeTab !== 'news') return;
     setLoadingNews(true);
-    fetch(`/api/copilot/news?state=${selectedState}&district=${selectedDistrict}`)
+    fetch(`${API_BASE}/api/copilot/news?state=${selectedState}&district=${selectedDistrict}`)
       .then(r => r.json())
       .then(d => {
         if (d && d.news) {
@@ -2469,7 +2469,7 @@ export default function App() {
       url = `/api/copilot/tenders?state=${encodeURIComponent(selectedState)}&district=${encodeURIComponent(selectedDistrict)}`;
     }
     
-    fetch(url)
+    fetch(`${API_BASE}${url}`)
       .then(r => r.json())
       .then(data => {
         let items = [];
@@ -2574,7 +2574,7 @@ export default function App() {
     setKioskDistricts(fd);
     
     // Attempt to fetch from API, if any exists
-    fetch(`/api/constituency/districts?state=${kioskState}`)
+    fetch(`${API_BASE}/api/constituency/districts?state=${kioskState}`)
       .then(r => r.json())
       .then(d => {
         if (d.districts && d.districts.length > 0) {
@@ -2586,7 +2586,7 @@ export default function App() {
 
   useEffect(() => {
     if (!kioskState || !kioskDistrict) { setKioskVillages([]); return; }
-    fetch(`/api/constituency/villages?state=${kioskState}&district=${kioskDistrict}`)
+    fetch(`${API_BASE}/api/constituency/villages?state=${kioskState}&district=${kioskDistrict}`)
       .then(r => r.json())
       .then(d => { setKioskVillages(d.villages); if (kioskDistrict !== selectedDistrict) setKioskVillage(''); })
       .catch(console.error);

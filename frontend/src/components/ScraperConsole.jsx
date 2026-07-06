@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
 
+import API_BASE from '../apiConfig';
+
 function GovPageBanner({ title, subtitle, breadcrumbs }) {
   return (
     <div style={{ background: '#EEF3FA', borderBottom: '1px solid #DDE1E7', padding: '16px 32px' }}>
@@ -22,9 +24,14 @@ function GovPageBanner({ title, subtitle, breadcrumbs }) {
 }
 
 export default function ScraperConsole() {
-  const API = '';
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const WS = `${protocol}//${window.location.host}`;
+  const API = API_BASE;
+  const WS = (() => {
+    if (API_BASE) {
+      return API_BASE.replace(/^http/, 'ws');
+    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}`;
+  })();
 
   const [crawlerRunning, setCrawlerRunning] = useState(false);
   const [crawlerStage, setCrawlerStage] = useState('idle');
