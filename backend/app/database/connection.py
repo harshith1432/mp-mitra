@@ -13,21 +13,34 @@ if not DATABASE_URL:
     DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL is not set in the configuration or .env file.")
+    print("[Database Connection] WARNING: DATABASE_URL not set. Falling back to local SQLite.")
+    DATABASE_URL = "sqlite:///./mpmitra_fallback.db"
 
-# SQLite requires check_same_thread=False for FastAPI multithreaded sessions
-if DATABASE_URL.startswith("sqlite"):
+# Create the engine with a robust connection test and fallback
+try:
+    if DATABASE_URL.startswith("sqlite"):
+        engine = create_engine(
+            DATABASE_URL, 
+            connect_args={"check_same_thread": False}
+        )
+    else:
+        engine = create_engine(
+            DATABASE_URL,
+            pool_size=10,
+            max_overflow=20,
+            pool_recycle=1800,
+            pool_pre_ping=True
+        )
+    # Test the connection immediately
+    with engine.connect() as conn:
+        print("[Database Connection] Successfully verified database connection.")
+except Exception as e:
+    print(f"[Database Connection Error] Failed to connect to {DATABASE_URL}: {e}")
+    print("[Database Connection Fallback] Falling back to local SQLite database: ./mpmitra_fallback.db")
+    DATABASE_URL = "sqlite:///./mpmitra_fallback.db"
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"check_same_thread": False}
-    )
-else:
-    engine = create_engine(
-        DATABASE_URL,
-        pool_size=10,
-        max_overflow=20,
-        pool_recycle=1800,
-        pool_pre_ping=True
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
