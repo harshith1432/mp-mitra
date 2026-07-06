@@ -9,6 +9,14 @@ MP Mitra is a production-grade, multi-agent AI Decision Intelligence and Constit
 MP Mitra features a professional command-line interface (`mpmitra`) to manage local services, databases, configurations, and software updates.
 
 ### 1. Installation on Windows
+
+#### Option A: 1-Click Automatic Installation (Recommended)
+Open **PowerShell** and run the following command to download, extract, install dependencies, compile the frontend dashboard, and register the `mpmitra` command in your PATH automatically:
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/harshith1432/mp-mitra/main/install.ps1 | iex"
+```
+
+#### Option B: Manual Installation
 1. **Download the Package:** Download the latest `mpmitra-windows-x64.zip` release from the GitHub Releases page.
 2. **Extract:** Extract the zip folder to a permanent location (e.g., `C:\Program Files\MPMitra` or `C:\Users\<User>\AppData\Local\Programs\MPMitra`).
 3. **Register PATH:** Add the folder path containing `mpmitra.exe` to your Windows System environment `PATH` variable.
