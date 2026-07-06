@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
   auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, googleProvider, doc, setDoc, getDoc
+  signInWithPopup, googleProvider, doc, setDoc, getDoc,
+  setPersistence, browserSessionPersistence
 } from '../firebase';
 import { Mail, Lock, User, RefreshCw, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -27,6 +28,9 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
     if (!email || !password) return;
     setLoading(true); setError('');
     try {
+      // Ensure this tab's auth session is stored in sessionStorage only,
+      // not localStorage — so it never bleeds into other browser tabs.
+      await setPersistence(auth, browserSessionPersistence);
       let userCredential;
       if (isRegister) {
         userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -57,6 +61,8 @@ export default function AuthScreen({ portal, onAuthSuccess, onBackToPortals }) {
   const handleGoogle = async () => {
     setLoading(true); setError('');
     try {
+      // Same per-tab isolation for Google sign-in
+      await setPersistence(auth, browserSessionPersistence);
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       const snap = await getDoc(doc(db, 'users', user.uid));

@@ -5,7 +5,9 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
-  signInWithPopup
+  signInWithPopup,
+  setPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -43,7 +45,17 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
 export const auth = getAuth(app);
+
+// ── PER-TAB AUTH ISOLATION ───────────────────────────────────────────────────
+// Use browserSessionPersistence so each browser tab has its own independent
+// Firebase auth session stored in sessionStorage. Logging into a different
+// account in Tab B will NOT affect Tab A (and vice-versa). Each tab can hold
+// a completely different user (MP, Admin, Citizen, Officer) simultaneously.
+setPersistence(auth, browserSessionPersistence).catch(console.error);
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const googleProvider = new GoogleAuthProvider();
+
 export const db = getFirestore(app, 'default');
 export const storage = getStorage(app);
 
@@ -69,6 +81,8 @@ export {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  signInWithPopup
+  signInWithPopup,
+  setPersistence,
+  browserSessionPersistence
 };
 export default app;
