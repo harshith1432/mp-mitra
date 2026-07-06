@@ -7,6 +7,17 @@ import uuid
 import socket
 from pathlib import Path
 from typing import Any, Dict
+from dotenv import load_dotenv
+
+# Load env variables from .env if present (dev environment support)
+# Make sure we do this before ConfigManager evaluates defaults
+try:
+    # Try loading from the root of the project as well as backend
+    load_dotenv(dotenv_path=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env")))
+    load_dotenv(dotenv_path=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")))
+except Exception:
+    pass
+load_dotenv()
 
 class ConfigManager:
     def __init__(self):
@@ -79,6 +90,12 @@ class ConfigManager:
 
     def get(self, key: str, default: Any = None) -> Any:
         """Gets a configuration parameter."""
+        # For development, check environment first for certain keys (like DATABASE_URL, PORT, HOST)
+        import sys
+        if not getattr(sys, 'frozen', False):
+            env_val = os.getenv(key)
+            if env_val:
+                return env_val
         return self.config.get(key, default)
 
     def set(self, key: str, val: Any):

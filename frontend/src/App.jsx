@@ -356,33 +356,25 @@ function FunctionLevelDashboard({ selectedState, selectedDistrict, constituencyD
   useEffect(() => {
     if (!activeCardId) return;
     
-    // Local data drill-down
-    if (selectedDept === 'education') {
-      if (activeCardId === 'all_schools') {
-        setDetailData(constituencyData?.map_points?.schools || []);
-      } else if (activeCardId === 'ptr_deficit') {
-        setDetailData((constituencyData?.map_points?.schools || []).filter(s => s.teachers > 0 && (s.students / s.teachers) > 30));
-      } else if (activeCardId === 'teaching_staff') {
-        setDetailData(constituencyData?.map_points?.schools || []);
-      }
-      return;
-    }
-    
-    if (selectedDept === 'health') {
-      if (activeCardId === 'all_clinics') {
-        setDetailData(constituencyData?.map_points?.clinics || []);
-      } else if (activeCardId === 'clinics_10k') {
-        setDetailData((constituencyData?.map_points?.clinics || []).filter(c => c.type.toLowerCase() === 'phc' || c.type.toLowerCase() === 'chc'));
-      } else if (activeCardId === 'subcentres') {
-        setDetailData((constituencyData?.map_points?.clinics || []).filter(c => c.type.toLowerCase().includes('sub')));
-      }
-      return;
-    }
-
-    // Backend queries for large tables (water, roads)
+    // Backend queries for large tables (water, roads, education, health)
     setDetailLoading(true);
     let url = '';
-    if (selectedDept === 'water') {
+    
+    if (selectedDept === 'education') {
+      if (activeCardId === 'all_schools' || activeCardId === 'teaching_staff') {
+        url = `/api/constituency/school-list?state=${selectedState}&district=${selectedDistrict}`;
+      } else if (activeCardId === 'ptr_deficit') {
+        url = `/api/constituency/school-list?state=${selectedState}&district=${selectedDistrict}&status=ptr_deficit`;
+      }
+    } else if (selectedDept === 'health') {
+      if (activeCardId === 'all_clinics') {
+        url = `/api/constituency/clinic-list?state=${selectedState}&district=${selectedDistrict}`;
+      } else if (activeCardId === 'clinics_10k') {
+        url = `/api/constituency/clinic-list?state=${selectedState}&district=${selectedDistrict}&type=chc_phc`;
+      } else if (activeCardId === 'subcentres') {
+        url = `/api/constituency/clinic-list?state=${selectedState}&district=${selectedDistrict}&type=subcentre`;
+      }
+    } else if (selectedDept === 'water') {
       if (activeCardId === 'fully_covered') {
         url = `/api/constituency/habitation-list?state=${selectedState}&district=${selectedDistrict}&status=fully_covered`;
       } else if (activeCardId === 'quality_incidents') {

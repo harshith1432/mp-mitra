@@ -721,3 +721,61 @@ def get_road_list(state: str, district: str, status: str = None, db: Session = D
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/school-list")
+def get_school_list(state: str, district: str, status: str = None, db: Session = Depends(get_db)):
+    try:
+        state_upper = state.strip().upper()
+        district_upper = district.strip().upper()
+        query = db.query(School).filter(
+            func.upper(School.state_name) == state_upper,
+            func.upper(School.district_name) == district_upper
+        )
+        if status == "ptr_deficit":
+            query = query.filter(School.total_teachers > 0, (School.total_students / School.total_teachers) > 30)
+            
+        records = query.limit(100).all()
+        return {
+            "records": [
+                {
+                    "id": s.id,
+                    "name": s.school_name,
+                    "category": s.school_category,
+                    "type": s.school_type,
+                    "students": s.total_students,
+                    "teachers": s.total_teachers
+                } for s in records
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/clinic-list")
+def get_clinic_list(state: str, district: str, type: str = None, db: Session = Depends(get_db)):
+    try:
+        state_upper = state.strip().upper()
+        district_upper = district.strip().upper()
+        query = db.query(HealthCentre).filter(
+            func.upper(HealthCentre.state_name) == state_upper,
+            func.upper(HealthCentre.district_name) == district_upper
+        )
+        if type == "chc_phc":
+            query = query.filter(func.lower(HealthCentre.facility_type).in_(["chc", "phc"]))
+        elif type == "subcentre":
+            query = query.filter(func.lower(HealthCentre.facility_type).like("%sub%"))
+            
+        records = query.limit(100).all()
+        return {
+            "records": [
+                {
+                    "id": c.id,
+                    "name": c.facility_name,
+                    "type": c.facility_type,
+                    "location_type": c.location_type,
+                    "lat": c.latitude or 0.0,
+                    "lng": c.longitude or 0.0
+                } for c in records
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
