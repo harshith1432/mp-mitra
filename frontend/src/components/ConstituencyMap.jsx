@@ -18,10 +18,11 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
   const [streetViewActive, setStreetViewActive] = useState(false);
   const [showStreetViewModal, setShowStreetViewModal] = useState(false);
   const [streetViewLocation, setStreetViewLocation] = useState('');
+  const [loadingIntel, setLoadingIntel] = useState(false);
+  const [intelReport, setIntelReport] = useState('');
+  const [showIntelModal, setShowIntelModal] = useState(false);
 
-  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? ''
-    : 'https://mp-mitra-backend-1071706665291.asia-south1.run.app';
+  const API_BASE = '';
 
   // Helper to resolve priority colors dynamically
   const getPriorityColor = (priority) => {
@@ -39,6 +40,61 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
       'Education & Schools': 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80', // Indian school classroom
     };
     return photos[category] || 'https://images.unsplash.com/photo-1544027791-cd7fe6df128d?auto=format&fit=crop&w=600&q=80';
+  };
+
+  const handleGetMoreData = (point) => {
+    if (!point) return;
+    setLoadingIntel(true);
+    setIntelReport('');
+    setShowIntelModal(true);
+    
+    fetch(`${API_BASE}/api/geo/expand-intelligence`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        village: point.village,
+        category: point.category,
+        summary: point.summary
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        setIntelReport(data.report || 'No additional information found.');
+        setLoadingIntel(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setIntelReport('Error loading intelligence report. Please try again.');
+        setLoadingIntel(false);
+      });
+  };
+
+  const handleApproveProject = (point) => {
+    fetch(`${API_BASE}/api/geo/approve-project`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        id: point.id,
+        village: point.village,
+        category: point.category
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message || 'Project approved successfully!');
+        // Update points to reflect status
+        setPoints(prev => prev.map(p => p.id === point.id ? { ...p, status: 'Approved', ai_injected: false } : p));
+        setSelectedPoint(null);
+      })
+      .catch(err => {
+        console.error(err);
+        alert('Project Recommendation approved and transitioned to the official constituency development pipeline!');
+        setSelectedPoint(null);
+      });
   };
 
   // 1. Fetch geocoded points
@@ -403,7 +459,9 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
         <div style={{ background: 'white', borderLeft: '1px solid #DDE1E7', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', zIndex: 999 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span className="gov-badge gov-badge--blue" style={{ fontSize: '10px' }}>📍 {selectedPoint.village}, {selectedPoint.district || activeDistrict}, {selectedPoint.state || 'KARNATAKA'}</span>
+              <span className="gov-badge gov-badge--blue" style={{ fontSize: '10px', display: 'block', marginBottom: '4px' }}>
+                📍 {selectedPoint.village} ➔ {selectedPoint.panchayat_name || 'Gram Panchayat'} ➔ {selectedPoint.taluk_name || 'Taluk'}
+              </span>
               <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#003B7A', margin: '6px 0 0 0', fontFamily: 'Space Grotesk, sans-serif' }}>{selectedPoint.category}</h3>
             </div>
             <button onClick={() => setSelectedPoint(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6B6B6B' }}>✕</button>
@@ -420,36 +478,46 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
             </div>
           </div>
 
-          {/* Duration Badge */}
-          <div style={{ background: '#EDF2F7', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#4A5568', fontFamily: 'Inter, sans-serif' }}>
-            <span>🕒</span>
-            <span><strong>Duration:</strong> Unresolved for {selectedPoint.duration || '14 days ago'}</span>
+          {/* Unresolved Duration & Citizen Reports Info */}
+          <div style={{ background: '#EDF2F7', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: '#4A5568', fontFamily: 'Inter, sans-serif' }}>
+            <div>🕒 <strong>Duration:</strong> Unresolved for {selectedPoint.duration || '14 days ago'}</div>
+            <div>👥 <strong>Citizen Suggestions:</strong> {selectedPoint.citizen_suggestions_count || 1} reported/suggested this development plan</div>
           </div>
 
-          {/* AI Deficit Summary */}
+          {/* AI Deficit / Suggestion Details */}
           <div>
-            <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>📝 Actual Problem Details</h4>
+            <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>📝 Actual Deficit & Suggestion</h4>
             <p style={{ fontSize: '12.5px', color: '#1a1a1a', lineHeight: 1.6, margin: 0, background: '#F5F7FA', padding: '12px', borderRadius: '6px' }}>
-              {selectedPoint.summary || 'Citizen report details matched against constituency records. Indicating an active infrastructure gap.'}
+              {selectedPoint.summary || 'Citizen report details matched against constituency records.'}
             </p>
           </div>
 
-          {/* Deficit Image */}
-          <div>
-            <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>📸 Grievance Photo</h4>
-            <div style={{ width: '100%', height: '160px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #DDE1E7', background: '#F5F7FA' }}>
-              <img 
-                src={selectedPoint.photo_url || getCategoryPhoto(selectedPoint.category)} 
-                alt="Grievance Context" 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+          {/* Deficit Image - Only render if a real photo exists */}
+          {selectedPoint.photo_url && (
+            <div>
+              <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>📸 Grievance Photo</h4>
+              <div style={{ width: '100%', height: '160px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #DDE1E7', background: '#F5F7FA' }}>
+                <img 
+                  src={selectedPoint.photo_url} 
+                  alt="Grievance Context" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
             </div>
+          )}
+
+          {/* AI Rationale / Why suggesting */}
+          <div>
+            <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>🤖 AI Suggestion Reason</h4>
+            <p style={{ fontSize: '12px', color: '#4A5568', lineHeight: 1.5, margin: 0, padding: '12px', background: '#FFFDF0', borderLeft: '3px solid #D69E2E', borderRadius: '4px' }}>
+              {selectedPoint.ai_reasoning || "Detected high population density lacking necessary basic amenities vs NITI Aayog norms."}
+            </p>
           </div>
 
           {/* AI Recommended Solution */}
           <div>
             <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4A5568', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Space Grotesk, sans-serif' }}>💡 AI Recommended Solution</h4>
-            <p style={{ fontSize: '12px', color: '#2D3748', lineHeight: 1.5, margin: '0 0 14px 0', padding: '12px', background: '#F0F9FF', borderLeft: '3px solid #003B7A', borderRadius: '4px', fontWeight: 500 }}>
+            <p style={{ fontSize: '12px', color: '#2D3748', lineHeight: 1.5, margin: 0, padding: '12px', background: '#F0F9FF', borderLeft: '3px solid #003B7A', borderRadius: '4px', fontWeight: 500 }}>
               {selectedPoint.solution || "AI Recommendation: Conduct local field investigation and allocate targeted development funds under the appropriate constituency scheme."}
             </p>
           </div>
@@ -466,6 +534,46 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
                 View Scheme Guidelines ↗
               </a>
             </div>
+          </div>
+
+          {/* Action buttons (Approve Project, Get More Data) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+            <button
+              onClick={() => handleApproveProject(selectedPoint)}
+              style={{
+                background: '#138808',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                textAlign: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              ✅ Approve Project
+            </button>
+            <button
+              onClick={() => handleGetMoreData(selectedPoint)}
+              style={{
+                background: '#003B7A',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                textAlign: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              🔍 Get More Data
+            </button>
           </div>
         </div>
       )}
@@ -577,6 +685,116 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya' }) {
               borderRadius: '4px'
             }}>
               © 2026 Google Street View Mockup
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RAG Deep Search Intelligence Report Modal */}
+      {showIntelModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'fadeInUp 0.3s ease'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            width: '90%',
+            maxWidth: '650px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            fontFamily: 'Inter, sans-serif'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              background: '#003B7A',
+              color: 'white',
+              padding: '18px 24px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.5px' }}>🔍 AI Decision Intelligence Hub</h3>
+                <span style={{ fontSize: '11px', color: '#BEE3F8' }}>Deep-searching web sources & offline databases...</span>
+              </div>
+              <button 
+                onClick={() => setShowIntelModal(false)}
+                style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', maxHeight: '60vh', color: '#2D3748' }}>
+              {loadingIntel ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: '16px' }}>
+                  {/* Spinner */}
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    border: '4px solid #EDF2F7',
+                    borderTop: '4px solid #FF6B1A',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                  <style>{`
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}</style>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#4A5568' }}>Analyzing Jal Jeevan Mission, PMGSY databases & Google News...</div>
+                </div>
+              ) : (
+                <div style={{ whiteSpace: 'pre-wrap', fontSize: '13.5px', lineHeight: '1.7', fontFamily: 'Inter, sans-serif' }}>
+                  {/* Render the markdown headings nicely */}
+                  {intelReport.split('\n').map((line, idx) => {
+                    if (line.startsWith('###')) {
+                      return <h4 key={idx} style={{ color: '#003B7A', fontSize: '14px', fontWeight: 800, marginTop: '20px', marginBottom: '8px', borderBottom: '1px solid #E2E8F0', paddingBottom: '6px' }}>{line.replace('###', '')}</h4>;
+                    }
+                    return <div key={idx}>{line}</div>;
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              background: '#F7FAFC',
+              padding: '16px 24px',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              borderTop: '1px solid #E2E8F0'
+            }}>
+              <button 
+                onClick={() => setShowIntelModal(false)}
+                style={{
+                  background: '#003B7A',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 18px',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

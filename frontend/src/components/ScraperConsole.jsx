@@ -22,12 +22,9 @@ function GovPageBanner({ title, subtitle, breadcrumbs }) {
 }
 
 export default function ScraperConsole() {
-  const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? ''
-    : 'https://mp-mitra-backend-1071706665291.asia-south1.run.app';
-  const WS = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'ws://localhost:8000'
-    : 'wss://mp-mitra-backend-1071706665291.asia-south1.run.app';
+  const API = '';
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const WS = `${protocol}//${window.location.host}`;
 
   const [crawlerRunning, setCrawlerRunning] = useState(false);
   const [crawlerStage, setCrawlerStage] = useState('idle');

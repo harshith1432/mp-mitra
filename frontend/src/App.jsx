@@ -2494,10 +2494,8 @@ export default function App() {
   }, [currentUser, selectedPortal]);
 
   useEffect(() => {
-    const baseUri = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? window.location.origin
-      : 'https://mp-mitra-backend-1071706665291.asia-south1.run.app';
-    const wsUrl = baseUri.replace('http', 'ws') + '/ws/dashboard';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/dashboard`;
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
       try {
@@ -3706,14 +3704,18 @@ export default function App() {
                 const clinicDeficitCount = (constituencyData?.metrics?.healthcare?.count || 0) < 6 ? 1 : 0;
                 const waterDeficitCount = ((constituencyData?.metrics?.water?.total_habitations || 0) - (constituencyData?.metrics?.water?.fully_covered || 0)) || 0;
                 const roadDeficitCount = ((constituencyData?.metrics?.roads?.count || 0) - (constituencyData?.metrics?.roads?.completed || 0)) || 0;
-                const totalDeficits = ptrDeficitCount + clinicDeficitCount + (waterDeficitCount > 0 ? 1 : 0) + (roadDeficitCount > 0 ? 1 : 0);
+
+                const crawledTenders = constituencyData?.metrics?.crawled_tenders_count || 0;
+                const crawledNews = constituencyData?.metrics?.crawled_news_alerts || [];
+
+                const totalDeficits = ptrDeficitCount + clinicDeficitCount + (waterDeficitCount > 0 ? 1 : 0) + (roadDeficitCount > 0 ? 1 : 0) + crawledTenders;
 
                 const whatsappCount = firestoreComplaints.filter(c => c.whatsapp_sim).length;
                 const webCount = firestoreComplaints.filter(c => !c.whatsapp_sim).length;
 
                 const criticalAlerts = firestoreComplaints.filter(c => c.urgency?.toLowerCase() === 'high' || c.urgency?.toLowerCase() === 'critical');
                 const waterQualityIssues = constituencyData?.metrics?.water?.quality_records || 0;
-                const totalRiskAlerts = criticalAlerts.length + waterQualityIssues;
+                const totalRiskAlerts = criticalAlerts.length + waterQualityIssues + crawledNews.length;
 
                 // Most demanded categories calculation
                 const categoryStats = {};
@@ -3730,10 +3732,10 @@ export default function App() {
                     <div style={{ padding:'24px 28px', display:'grid', gap:'20px' }}>
                       <div className="gov-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'14px' }}>
                         <StatCard label={t('dashboard.health_score')} value={`${constituencyData?.health_score||82}/100`} color="#003B7A" icon={Activity} />
-                        <StatCard label={t('dashboard.ai_deficits')} value={`${totalDeficits}`} color="#FF6B1A" icon={Sparkles} sub={totalDeficits > 0 ? t('dashboard.school_clinic_gaps', { schools: ptrDeficitCount, clinics: clinicDeficitCount }) : t('dashboard.no_deficits')} />
+                        <StatCard label={t('dashboard.ai_deficits')} value={`${totalDeficits}`} color="#FF6B1A" icon={Sparkles} sub={`${ptrDeficitCount} School / ${clinicDeficitCount} Clinic / ${crawledTenders} Scraped Tenders`} />
                         <StatCard label={t('dashboard.complaints')} value={firestoreComplaints.length.toLocaleString()} color="#138808" icon={Users} sub={t('dashboard.whatsapp_web_stat', { whatsapp: whatsappCount, web: webCount })} />
                         <StatCard label={t('dashboard.completed_projects')} value={constituencyData?.metrics?.roads?.completed || 0} color="#003B7A" icon={CheckCircle2} sub={t('dashboard.out_of_roads', { total: constituencyData?.metrics?.roads?.count || 0 })} />
-                        <StatCard label={t('dashboard.risk_alerts')} value={`${totalRiskAlerts}`} color="#C62B2B" icon={AlertCircle} sub={totalRiskAlerts > 0 ? t('dashboard.high_urgency_water', { high: criticalAlerts.length, water: waterQualityIssues }) : t('dashboard.no_risk')} />
+                        <StatCard label={t('dashboard.risk_alerts')} value={`${totalRiskAlerts}`} color="#C62B2B" icon={AlertCircle} sub={`${criticalAlerts.length} High Urgency / ${waterQualityIssues} Water Gaps / ${crawledNews.length} News Alerts`} />
                       </div>
 
                       <div className="gov-grid-split" style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'20px' }}>
@@ -3817,7 +3819,7 @@ export default function App() {
                           <div className="gov-card" style={{ padding:'24px' }}>
                             <SectionHeader title={t('dashboard.active_risk_alerts')} accent="#C62B2B" />
                             <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-                              {criticalAlerts.length === 0 && waterQualityIssues === 0 ? (
+                              {criticalAlerts.length === 0 && waterQualityIssues === 0 && crawledNews.length === 0 ? (
                                 <div style={{ fontSize:'12px', color:'#6B6B6B', textAlign:'center', padding:'10px 0' }}>{t('dashboard.no_risk')}</div>
                               ) : (
                                 <>
@@ -3840,6 +3842,17 @@ export default function App() {
                                         <div style={{ fontSize:'11px', color:'#6B6B6B' }}>📍 {a.village || 'General Area'}</div>
                                       </div>
                                       <span className="gov-badge gov-badge--red" style={{ background:'#E53E3E', color:'white' }}>High</span>
+                                    </div>
+                                  ))}
+
+                                  {/* Crawled News Alerts */}
+                                  {crawledNews.map((n, i) => (
+                                    <div key={`crawled_${i}`} style={{ padding:'10px 12px', background:'#FFF5F5', border:'1px solid #FEB2B2', borderRadius:'6px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                                      <div style={{ flex:1, marginRight:'8px' }}>
+                                        <div style={{ fontSize:'12px', fontWeight:700, color:'#C62B2B', textOverflow:'ellipsis', overflow:'hidden', whiteSpace:'nowrap' }}>{n.title}</div>
+                                        <div style={{ fontSize:'11px', color:'#6B6B6B' }}>📰 {n.source} | 📍 {n.village}</div>
+                                      </div>
+                                      <span className="gov-badge gov-badge--red" style={{ background:'#E53E3E', color:'white' }}>{n.severity}</span>
                                     </div>
                                   ))}
                                 </>

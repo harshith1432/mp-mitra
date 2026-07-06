@@ -360,12 +360,39 @@ def get_constituency_data(state: str, district: str, db: Session = Depends(get_d
         road_score = 25 * road_completion_ratio
         
         composite_health_score = int(ptr_score + clinic_score + water_score + road_score)
+
+        # Fetch crawled news, tenders, and schemes to merge real-time scraper data
+        from app.database.models import CrawledNews, CrawledTender, CrawledScheme
+        crawled_news_db = db.query(CrawledNews).filter(
+            func.upper(CrawledNews.district_name) == dist_upper
+        ).order_by(CrawledNews.severity_score.desc()).limit(3).all()
         
+        crawled_news_alerts = [
+            {
+                "title": n.title,
+                "source": n.source,
+                "severity": "High" if n.severity_score >= 80 else "Medium",
+                "village": n.district_name.title()
+            } for n in crawled_news_db
+        ]
+
+        crawled_tenders_count = db.query(CrawledTender).filter(
+            func.upper(CrawledTender.district_name) == dist_upper
+        ).count()
+
+        crawled_schemes_count = db.query(CrawledScheme).count()
+
+        if crawled_news_db:
+            composite_health_score = max(40, composite_health_score - len(crawled_news_db) * 2)
+
         return {
             "constituency": f"{district}, {state}",
             "health_score": composite_health_score,
             "metrics": {
                 "population": total_pop,
+                "crawled_news_alerts": crawled_news_alerts,
+                "crawled_tenders_count": crawled_tenders_count,
+                "crawled_schemes_count": crawled_schemes_count,
                 "sc_st_percentage": round((sc_pop + st_pop) / total_pop * 100, 2) if total_pop > 0 else 0,
                 "total_villages": len(unique_villages),
                 "total_panchayats": len(unique_panchayats),

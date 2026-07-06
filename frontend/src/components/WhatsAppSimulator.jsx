@@ -23,9 +23,7 @@ export default function WhatsAppSimulator() {
   const [blockList, setBlockList] = useState([]);
   const [villageList, setVillageList] = useState([]);
 
-  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? ''
-    : 'https://mp-mitra-backend-1071706665291.asia-south1.run.app';
+  const API_BASE = '';
 
   // Fetch States on mount
   useEffect(() => {
