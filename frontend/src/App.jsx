@@ -3563,9 +3563,9 @@ export default function App() {
                 const totalPopVal = constituencyData?.metrics?.population;
                 const popVal = totalPopVal
                   ? (totalPopVal >= 100000 
-                      ? `${(totalPopVal / 100000).toFixed(2)} Lakh`
+                      ? `${(totalPopVal / 100000).toFixed(2)} ${t('digital_twin.lakh')}`
                       : totalPopVal.toLocaleString())
-                  : '4.2 Lakh';
+                  : `4.2 ${t('digital_twin.lakh')}`;
                 
                 const villagesCount = constituencyData?.metrics?.total_villages || '312';
                 const panchayatsCount = constituencyData?.metrics?.total_panchayats || '43';
@@ -3677,15 +3677,15 @@ export default function App() {
 
                 return (
                   <>
-                    <GovPageBanner title="Constituency Digital Twin" subtitle={`Live multi-layer intelligence model for ${selectedDistrict}, ${selectedState}`} breadcrumbs={['MP Dashboard','Digital Twin']} />
+                    <GovPageBanner title={t('nav.digital_twin')} subtitle={t('digital_twin.subtitle_pattern').replace('{{district}}', selectedDistrict).replace('{{state}}', selectedState)} breadcrumbs={[t('header.official_portal'), t('nav.digital_twin')]} />
                     <div style={{ padding:'24px 28px', display:'grid', gap:'20px' }}>
                       <div className="gov-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'14px' }}>
                         {[
-                          {id:'population',label:'Population',value:popVal,icon:'👥',color:'#003B7A'},
-                          {id:'villages',label:'Villages',value:villagesCount,icon:'🏘️',color:'#138808'},
-                          {id:'panchayats',label:'Gram Panchayats',value:panchayatsCount,icon:'🏛️',color:'#FF6B1A'},
-                          {id:'roads',label:'PMGSY Road Cover',value:`${roadCoverPct}%`,icon:'🛣️',color:'#003B7A'},
-                          {id:'water',label:'JJM Water Cover',value:`${waterCoverPct}%`,icon:'💧',color:'#C62B2B'},
+                          {id:'population',label:t('dashboard.population'),value:popVal,icon:'👥',color:'#003B7A'},
+                          {id:'villages',label:t('digital_twin.villages'),value:villagesCount,icon:'🏘️',color:'#138808'},
+                          {id:'panchayats',label:t('digital_twin.panchayats'),value:panchayatsCount,icon:'🏛️',color:'#FF6B1A'},
+                          {id:'roads',label:t('digital_twin.road_cover'),value:`${roadCoverPct}%`,icon:'🛣️',color:'#003B7A'},
+                          {id:'water',label:t('digital_twin.water_cover'),value:`${waterCoverPct}%`,icon:'💧',color:'#C62B2B'},
                         ].map((s,i)=>(
                           <div 
                             key={i} 
@@ -3709,23 +3709,23 @@ export default function App() {
                       </div>
                       <div className="gov-grid-split" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px' }}>
                         <div className="gov-card" style={{ padding:'24px' }}>
-                          <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'15px', fontWeight:700, color:'#003B7A', marginBottom:'16px', paddingBottom:'10px', borderBottom:'1px solid #DDE1E7' }}>📊 Sector Health Index</div>
+                          <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'15px', fontWeight:700, color:'#003B7A', marginBottom:'16px', paddingBottom:'10px', borderBottom:'1px solid #DDE1E7' }}>{t('digital_twin.sector_health')}</div>
                           {sectors.map((s,i)=>(
                             <div key={i} style={{ marginBottom:'12px' }}>
                               <div style={{ display:'flex', justifyContent:'space-between', fontSize:'12px', fontWeight:700, color:'#1a1a1a', marginBottom:'5px' }}>
-                                <span>{s.sector}</span><span style={{ color:s.color }}>{s.score}/100</span>
+                                <span>{t(s.sector.toLowerCase().replace(' ', '_').replace('(', '').replace(')', ''), { defaultValue: s.sector })}</span><span style={{ color:s.color }}>{s.score}/100</span>
                               </div>
                               <div className="gov-progress-bar"><div className="gov-progress-bar__fill" style={{ width:`${s.score}%`, background:s.color }} /></div>
                             </div>
                           ))}
                         </div>
                         <div className="gov-card" style={{ padding:'24px' }}>
-                          <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'15px', fontWeight:700, color:'#003B7A', marginBottom:'16px', paddingBottom:'10px', borderBottom:'1px solid #DDE1E7' }}>🏗️ Active Project Pipeline</div>
+                          <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'15px', fontWeight:700, color:'#003B7A', marginBottom:'16px', paddingBottom:'10px', borderBottom:'1px solid #DDE1E7' }}>{t('digital_twin.active_pipeline')}</div>
                           {finalPipeline.map((p,i)=>(
                             <div key={i} style={{ marginBottom:'14px', padding:'12px', background:'#F5F7FA', borderRadius:'8px', border:'1px solid #DDE1E7' }}>
                               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
                                 <span style={{ fontSize:'12px', fontWeight:700, color:'#1a1a1a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'220px' }} title={p.name}>{p.name}</span>
-                                <span className="gov-badge" style={{ background:`${p.color}15`, color:p.color }}>{p.phase}</span>
+                                <span className="gov-badge" style={{ background:`${p.color}15`, color:p.color }}>{t(p.phase.toLowerCase().replace(' ', '_'), { defaultValue: p.phase })}</span>
                               </div>
                               <div style={{ display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#6B6B6B', marginBottom:'5px' }}><span>{p.budget}</span><span>{p.pct}%</span></div>
                               <div className="gov-progress-bar"><div className="gov-progress-bar__fill" style={{ width:`${p.pct}%`, background:p.color }} /></div>
@@ -3734,16 +3734,16 @@ export default function App() {
                         </div>
                       </div>
                       <div className="gov-card" style={{ padding:'24px' }}>
-                        <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'15px', fontWeight:700, color:'#003B7A', marginBottom:'16px', paddingBottom:'10px', borderBottom:'1px solid #DDE1E7' }}>📡 AI Deficit Signals (Real-time)</div>
+                        <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'15px', fontWeight:700, color:'#003B7A', marginBottom:'16px', paddingBottom:'10px', borderBottom:'1px solid #DDE1E7' }}>{t('digital_twin.ai_deficits')}</div>
                         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'14px' }}>
                           {finalDeficits.map((a,i)=>(
                             <div key={i} style={{ padding:'14px', background:`${a.color}08`, border:`1px solid ${a.color}30`, borderRadius:'8px', borderLeft:`3px solid ${a.color}`, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
                               <div>
                                 <div style={{ fontSize:'18px', marginBottom:'6px' }}>{a.icon}</div>
-                                <div style={{ fontSize:'12px', fontWeight:700, color:a.color, marginBottom:'4px' }}>{a.title}</div>
+                                <div style={{ fontSize:'12px', fontWeight:700, color:a.color, marginBottom:'4px' }}>{t(a.title.toLowerCase().replace(' ', '_'), { defaultValue: a.title })}</div>
                                 <div style={{ fontSize:'11px', color:'#6B6B6B', marginBottom:'8px', lineHeight:1.4 }}>{a.loc}</div>
                               </div>
-                              <span className="gov-badge" style={{ background:`${a.color}15`, color:a.color, fontSize:'10px', alignSelf:'flex-start' }}>{a.level}</span>
+                              <span className="gov-badge" style={{ background:`${a.color}15`, color:a.color, fontSize:'10px', alignSelf:'flex-start' }}>{t(a.level.toLowerCase(), { defaultValue: a.level })}</span>
                             </div>
                           ))}
                         </div>
