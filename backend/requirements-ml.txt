@@ -1,0 +1,31 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# MP MITRA — OPTIONAL ML/AI REQUIREMENTS (local dev / GPU servers only)
+# Install with: pip install -r requirements-ml.txt
+# Do NOT use on Render free tier — packages require source compilation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Include core requirements first
+-r requirements.txt
+
+# ── Heavy Data Science ────────────────────────────────────────────────────────
+scipy==1.13.1
+
+# ── Machine Learning ──────────────────────────────────────────────────────────
+torch==2.4.1
+transformers==4.44.2
+sentence-transformers==3.1.1
+
+# ── Computer Vision ───────────────────────────────────────────────────────────
+ultralytics==8.2.103
+
+# ── Speech-to-Text ────────────────────────────────────────────────────────────
+openai-whisper==20231117
+
+# ── Vector Databases ──────────────────────────────────────────────────────────
+chromadb==0.5.11
+qdrant-client==1.11.3
+
+# ── LangGraph / LangChain Orchestration ──────────────────────────────────────
+langgraph==0.2.28
+langchain==0.3.1
+langchain-community==0.3.1
