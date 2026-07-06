@@ -6,8 +6,12 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 import requests
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    _sklearn_available = True
+except ImportError:
+    _sklearn_available = False
 from firebase_admin import firestore
 
 from app.database.firebase_config import db as fs_db, bucket
@@ -263,12 +267,27 @@ async def submit_complaint(
             corpus = [text_content] + [c.get("text_content", "") for c in existing_complaints]
             
             try:
-                vectorizer = TfidfVectorizer().fit_transform(corpus)
-                vectors = vectorizer.toarray()
-                similarities = cosine_similarity(vectors[0:1], vectors[1:])[0]
-                max_sim_idx = similarities.argmax()
-                max_sim = similarities[max_sim_idx]
-                
+                if _sklearn_available:
+                    vectorizer = TfidfVectorizer().fit_transform(corpus)
+                    vectors = vectorizer.toarray()
+                    similarities = cosine_similarity(vectors[0:1], vectors[1:])[0]
+                    max_sim_idx = similarities.argmax()
+                    max_sim = similarities[max_sim_idx]
+                else:
+                    # Pure Python Jaccard Similarity fallback
+                    words_target = set(text_content.lower().split())
+                    max_sim = -1.0
+                    max_sim_idx = -1
+                    for idx, c in enumerate(existing_complaints):
+                        c_text = c.get("text_content", "")
+                        words_c = set(c_text.lower().split())
+                        intersection = words_target.intersection(words_c)
+                        union = words_target.union(words_c)
+                        jaccard = len(intersection) / len(union) if union else 0.0
+                        if jaccard > max_sim:
+                            max_sim = jaccard
+                            max_sim_idx = idx
+                    
                 agent_logs.append(f"Duplicate Detection Agent: Highest match: {max_sim*100:.1f}%")
                 
                 if max_sim > 0.55:
