@@ -216,7 +216,7 @@ class CrawlerManager:
                 self.emit("INFO", "Stage 1", f"📚 Loading national + state scheme registry ({len(NATIONAL_SCHEMES)} schemes)...")
                 n = load_national_schemes_rt(db, self)
                 items_count += n
-                with self._lock: self._items_added = items_count
+                with self._lock: self._items_added = self._schemes_added_run + self._news_added_run + self._tenders_added_run
 
                 # ── Stage 2 ──────────────────────────────────────────────────────
                 if not self._running: break
@@ -224,7 +224,7 @@ class CrawlerManager:
                 self.emit("INFO", "Stage 2", f"📰 Generating district news for ALL {total_districts} districts...")
                 n = load_all_district_news_rt(db, self)
                 items_count += n
-                with self._lock: self._items_added = items_count
+                with self._lock: self._items_added = self._schemes_added_run + self._news_added_run + self._tenders_added_run
 
                 # ── Stage 3 ──────────────────────────────────────────────────────
                 if not self._running: break
@@ -232,7 +232,7 @@ class CrawlerManager:
                 self.emit("INFO", "Stage 3", f"🏗️ Generating infrastructure tenders for ALL {total_districts} districts...")
                 n = load_all_district_tenders_rt(db, self)
                 items_count += n
-                with self._lock: self._items_added = items_count
+                with self._lock: self._items_added = self._schemes_added_run + self._news_added_run + self._tenders_added_run
 
                 # ── Stage 4 ──────────────────────────────────────────────────────
                 if not self._running: break
@@ -240,7 +240,7 @@ class CrawlerManager:
                 self.emit("INFO", "Stage 4", "📡 Scraping live PIB press release feeds...")
                 n = scrape_pib_feeds_rt(db, self)
                 items_count += n
-                with self._lock: self._items_added = items_count
+                with self._lock: self._items_added = self._schemes_added_run + self._news_added_run + self._tenders_added_run
 
                 # ── Stage 5 ──────────────────────────────────────────────────────
                 if not self._running: break
@@ -248,7 +248,7 @@ class CrawlerManager:
                 self.emit("INFO", "Stage 5", "🌐 Scanning MyScheme.gov.in for new welfare schemes...")
                 n = scrape_myscheme_portal_rt(db, self)
                 items_count += n
-                with self._lock: self._items_added = items_count
+                with self._lock: self._items_added = self._schemes_added_run + self._news_added_run + self._tenders_added_run
 
                 # Commit after each complete loop iteration
                 db.commit()

@@ -13,6 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database.connection import Base, engine
 from app.version import VERSION
+from app.database.crawler_manager import crawler_manager
 
 app = FastAPI(title="MP Mitra: AI Decision Intelligence Platform", version=VERSION)
 
