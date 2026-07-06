@@ -280,8 +280,14 @@ if getattr(sys, 'frozen', False):
     bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
     dist_path = os.path.join(bundle_dir, "frontend", "dist")
 else:
-    # Standard local environment path
-    dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+    # Check multiple candidate paths for compiled frontend assets
+    dist_path_monorepo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+    dist_path_nested = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dist"))
+    
+    if os.path.exists(os.path.join(dist_path_nested, "index.html")):
+        dist_path = dist_path_nested
+    else:
+        dist_path = dist_path_monorepo
 
 _frontend_built = os.path.exists(dist_path) and os.path.exists(os.path.join(dist_path, "index.html"))
 
