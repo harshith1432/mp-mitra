@@ -94,8 +94,112 @@ export function LanguageProvider({ children }) {
   return (
     <LanguageContext.Provider value={{ lang, changeLanguage, t, currentLangDef, SUPPORTED_LANGUAGES }}>
       {children}
+      <AutoTranslator lang={lang} />
     </LanguageContext.Provider>
   );
+}
+
+// ── AUTOMATIC SITE-WIDE TRANSLATOR ───────────────────────────────────────────
+// Translates any visible English text node and input placeholder on the fly
+// when a non-English language is selected. Uses localStorage caching for speed.
+function AutoTranslator({ lang }) {
+  useEffect(() => {
+    if (!lang || lang === 'en') return;
+
+    const translateText = async (text) => {
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.length < 2) return null;
+      
+      // Skip numbers, percentages, dates, phone numbers, and currencies
+      if (/^[0-9\s%/\-+.,:()₹$]+$/.test(trimmed)) return null;
+
+      const cacheKey = `tr::${lang}::${trimmed}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) return cached;
+
+      try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${lang}&dt=t&q=${encodeURIComponent(trimmed)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data[0]) {
+            const translated = data[0].map(x => x[0]).join('');
+            if (translated && translated.trim()) {
+              localStorage.setItem(cacheKey, translated.trim());
+              return translated.trim();
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[AutoTranslator] Error translating:", trimmed, err);
+      }
+      return null;
+    };
+
+    const handleNode = async (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const val = node.nodeValue;
+        if (val && val.trim().length > 1) {
+          const trans = await translateText(val);
+          if (trans && node.nodeValue === val) { // Ensure node content hasn't changed since request
+            node.nodeValue = val.replace(val.trim(), trans);
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        if (tag === 'script' || tag === 'style' || tag === 'textarea' || tag === 'code') return;
+        if (node.closest && (node.closest('.no-translate') || node.closest('.leaflet-container'))) return;
+
+        // Translate placeholders
+        if (tag === 'input' || tag === 'textarea') {
+          const placeholder = node.getAttribute('placeholder');
+          if (placeholder && placeholder.trim().length > 1) {
+            const trans = await translateText(placeholder);
+            if (trans) node.setAttribute('placeholder', trans);
+          }
+        }
+
+        // Walk child nodes
+        node.childNodes.forEach(handleNode);
+      }
+    };
+
+    // Initial translation pass
+    document.body.childNodes.forEach(handleNode);
+
+    // Dynamic Mutation Observer to catch newly loaded or dynamic content
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach(handleNode);
+        
+        // Handle text changes in existing text nodes
+        if (mutation.type === 'characterData') {
+          const node = mutation.target;
+          const val = node.nodeValue;
+          // Avoid translation loop by verifying if it's already translated
+          const cacheKey = `tr::${lang}::${val ? val.trim() : ''}`;
+          if (val && val.trim().length > 1 && !localStorage.getItem(cacheKey)) {
+            // Ensure we aren't translating a string that's already in the target language
+            translateText(val).then(trans => {
+              if (trans && node.nodeValue === val) {
+                node.nodeValue = val.replace(val.trim(), trans);
+              }
+            });
+          }
+        }
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    return () => observer.disconnect();
+  }, [lang]);
+
+  return null;
 }
 
 export function useLanguage() {
