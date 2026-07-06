@@ -993,6 +993,265 @@ function FunctionLevelDashboard({ selectedState, selectedDistrict, constituencyD
 }
 
 // ============================================================
+
+// ============================================================
+// AI RECOMMENDATIONS PANEL — REAL-TIME PRIORITY SYSTEM
+// ============================================================
+function RecommendationsPanel({ sName, dName }) {
+  const [activeFilter, setActiveFilter] = React.useState('ALL');
+  const [activeCat, setActiveCat]       = React.useState('ALL');
+  const [data, setData]                 = React.useState(null);
+  const [loading, setLoading]           = React.useState(false);
+  const [error, setError]               = React.useState(null);
+  const [expandedId, setExpandedId]     = React.useState(null);
+  const [lastFetch, setLastFetch]       = React.useState(null);
+
+  const PRIORITY_COLORS = { HIGH: '#C62B2B', MID: '#D97706', LOW: '#138808' };
+  const PRIORITY_BG     = { HIGH: '#FEF2F2', MID: '#FFFBEB', LOW: '#F0FDF4' };
+  const PRIORITY_ICONS  = { HIGH: '🔴', MID: '🟡', LOW: '🟢' };
+  const CAT_ICONS = {
+    Healthcare: '🏥', 'Water Supply': '💧', Education: '📚',
+    Roads: '🛣️', Electricity: '⚡', Connectivity: '📡', Sanitation: '🚰'
+  };
+
+  const fetchData = React.useCallback(async (priority, cat) => {
+    const pf = priority !== undefined ? priority : activeFilter;
+    const cf = cat !== undefined ? cat : activeCat;
+    if (!sName || !dName) { setError('Please select a state and district.'); return; }
+    setLoading(true); setError(null);
+    try {
+      const params = new URLSearchParams({ state: sName, district: dName, limit: 60 });
+      if (pf !== 'ALL') params.append('priority', pf);
+      if (cf !== 'ALL') params.append('category', cf);
+      const res = await fetch(`/api/recommendations/priorities?${params}`);
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const json = await res.json();
+      if (json.status === 'error') throw new Error(json.error || 'Failed to load');
+      setData(json);
+      setLastFetch(new Date().toLocaleTimeString());
+    } catch(e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [sName, dName, activeFilter, activeCat]);
+
+  React.useEffect(() => { fetchData('ALL', 'ALL'); }, [sName, dName]);
+
+  const handleFilter = (p) => { setActiveFilter(p); fetchData(p, activeCat); };
+  const handleCat    = (c) => { setActiveCat(c);    fetchData(activeFilter, c); };
+
+  const summary = data?.summary || { HIGH: 0, MID: 0, LOW: 0, total: 0 };
+  const recs    = data?.recommendations || [];
+  const allCats = ['ALL', ...new Set(recs.map(r => r.category))];
+
+  return (
+    <>
+      <GovPageBanner
+        title="AI Priority Recommendations"
+        subtitle={`Real-time infrastructure deficit analysis — ${dName || 'Select District'}, ${sName || ''}`}
+        breadcrumbs={['MP Dashboard','AI Recommendations']}
+      />
+      <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+        {/* Priority Summary Cards — clickable filters */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '14px' }}>
+          {[
+            { label: 'HIGH Priority', key: 'HIGH', count: summary.HIGH, color: '#C62B2B', bg: '#FEF2F2', icon: '🔴', desc: 'Urgent — immediate action' },
+            { label: 'MID Priority',  key: 'MID',  count: summary.MID,  color: '#D97706', bg: '#FFFBEB', icon: '🟡', desc: 'Plan within 6 months' },
+            { label: 'LOW Priority',  key: 'LOW',  count: summary.LOW,  color: '#138808', bg: '#F0FDF4', icon: '🟢', desc: 'Include in next year plan' },
+            { label: 'Total Issues',  key: 'ALL',  count: summary.total || (summary.HIGH+summary.MID+summary.LOW), color: '#003B7A', bg: '#EFF6FF', icon: '📋', desc: 'All infrastructure sectors' },
+          ].map((s) => (
+            <div key={s.key}
+              onClick={() => handleFilter(s.key)}
+              style={{
+                background: activeFilter === s.key ? s.color : s.bg,
+                borderRadius: '12px', padding: '16px',
+                border: `2px solid ${activeFilter === s.key ? s.color : s.color + '30'}`,
+                cursor: 'pointer', transition: 'all 0.18s',
+                boxShadow: activeFilter === s.key ? `0 4px 14px ${s.color}50` : '0 1px 4px rgba(0,0,0,0.05)',
+                color: activeFilter === s.key ? 'white' : 'inherit'
+              }}>
+              <div style={{ fontSize: '22px', marginBottom: '6px' }}>{s.icon}</div>
+              <div style={{ fontSize: '26px', fontWeight: 800, color: activeFilter === s.key ? 'white' : s.color }}>
+                {loading ? '…' : (s.count || 0)}
+              </div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: activeFilter === s.key ? 'white' : '#1a1a1a', marginTop: '2px' }}>{s.label}</div>
+              <div style={{ fontSize: '10.5px', color: activeFilter === s.key ? 'rgba(255,255,255,0.8)' : '#6B7280', marginTop: '3px' }}>{s.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filter + Category bar */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', background: 'white', padding: '12px 16px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Category:</span>
+          {allCats.map(c => (
+            <button key={c} onClick={() => handleCat(c)} style={{
+              padding: '5px 12px', borderRadius: '16px', border: '1.5px solid',
+              borderColor: activeCat === c ? '#003B7A' : '#DDE1E7',
+              background: activeCat === c ? '#003B7A' : 'white',
+              color: activeCat === c ? 'white' : '#4A5568',
+              fontWeight: 600, fontSize: '11.5px', cursor: 'pointer', transition: 'all 0.15s'
+            }}>
+              {CAT_ICONS[c] || ''} {c}
+            </button>
+          ))}
+          <div style={{ marginLeft: 'auto' }}>
+            <button onClick={() => { setActiveFilter('ALL'); setActiveCat('ALL'); fetchData('ALL','ALL'); }}
+              disabled={loading} style={{
+              padding: '6px 14px', borderRadius: '8px', border: '1px solid #DDE1E7',
+              background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#374151'
+            }}>
+              {loading ? '⏳ Loading…' : '🔄 Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {/* Status bar */}
+        {lastFetch && !loading && (
+          <div style={{ fontSize: '11px', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ color: '#22C55E', fontWeight: 700 }}>●</span>
+            Live data from database · Last fetched {lastFetch} · {recs.length} records shown for {dName}
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div style={{ fontSize: '36px', marginBottom: '14px' }}>⏳</div>
+            <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 600 }}>Scanning infrastructure database for {dName}…</div>
+            <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '6px' }}>Schools · Roads · Health Centres · Water Records · Citizen Complaints</div>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && !loading && (
+          <div style={{ padding: '18px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FECACA', color: '#991B1B', fontSize: '13px' }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* Empty */}
+        {!loading && !error && recs.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6B7280' }}>
+            <div style={{ fontSize: '36px', marginBottom: '12px' }}>📭</div>
+            <div style={{ fontWeight: 600, fontSize: '14px' }}>No {activeFilter !== 'ALL' ? activeFilter + ' priority ' : ''} issues found for {dName || 'selected district'}</div>
+            <div style={{ fontSize: '12px', marginTop: '6px' }}>Database may not have records for this district yet.</div>
+            <button onClick={() => { setActiveFilter('ALL'); setActiveCat('ALL'); fetchData('ALL','ALL'); }}
+              style={{ marginTop: '14px', padding: '8px 20px', borderRadius: '8px', background: '#003B7A', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px' }}>
+              Show All
+            </button>
+          </div>
+        )}
+
+        {/* Recommendation Cards Grid */}
+        {!loading && !error && recs.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            {recs.map(rec => {
+              const expanded = expandedId === rec.id;
+              const pc = rec.priority_color || PRIORITY_COLORS[rec.priority] || '#6B7280';
+              const bg = PRIORITY_BG[rec.priority] || '#F8F9FA';
+              return (
+                <div key={rec.id} style={{
+                  background: 'white', borderRadius: '12px',
+                  border: '1px solid #E2E8F0', borderLeft: `4px solid ${pc}`,
+                  boxShadow: '0 1px 5px rgba(0,0,0,0.06)', overflow: 'hidden'
+                }}>
+                  {/* Header */}
+                  <div style={{ padding: '16px 18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                          <span style={{ background: bg, color: pc, padding: '3px 9px', borderRadius: '10px', fontSize: '10.5px', fontWeight: 800, border: `1px solid ${pc}30` }}>
+                            {PRIORITY_ICONS[rec.priority] || '📌'} {rec.priority} PRIORITY
+                          </span>
+                          <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '3px 9px', borderRadius: '10px', fontSize: '10.5px', fontWeight: 700 }}>
+                            {CAT_ICONS[rec.category] || '📌'} {rec.category}
+                          </span>
+                        </div>
+                        <h3 style={{ fontSize: '13.5px', fontWeight: 700, color: '#111827', margin: '0 0 4px', lineHeight: 1.35 }}>{rec.title}</h3>
+                        <div style={{ fontSize: '11px', color: '#6B7280' }}>📍 {rec.location}</div>
+                      </div>
+                      {/* Score ring */}
+                      <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                        <div style={{
+                          width: '42px', height: '42px', borderRadius: '50%',
+                          background: `conic-gradient(${pc} ${rec.score}%, #F3F4F6 0%)`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '11px', fontWeight: 800, color: pc,
+                          boxShadow: `inset 0 0 0 5px white`
+                        }}>{rec.score}</div>
+                        <div style={{ fontSize: '9px', color: '#9CA3AF', fontWeight: 700, marginTop: '2px' }}>SCORE</div>
+                      </div>
+                    </div>
+
+                    <p style={{ fontSize: '11.5px', color: '#374151', lineHeight: 1.55, margin: '0 0 8px',
+                      display: '-webkit-box', WebkitLineClamp: expanded ? 999 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                    }}>❓ {rec.problem}</p>
+
+                    {/* Citizen voice */}
+                    {rec.citizen_complaints > 0 && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px',
+                        background: '#FFF7ED', border: '1px solid #FED7AA',
+                        padding: '4px 10px', borderRadius: '8px', fontSize: '11px', color: '#92400E'
+                      }}>
+                        🗣️ <strong>{rec.citizen_complaints.toLocaleString('en-IN')}</strong> citizen complaints from {dName}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Toggle */}
+                  <button onClick={() => setExpandedId(expanded ? null : rec.id)} style={{
+                    width: '100%', padding: '7px 18px', background: '#F8FAFC',
+                    border: 'none', borderTop: '1px solid #F0F2F5', cursor: 'pointer',
+                    fontSize: '11px', color: '#5A6474', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                  }}>
+                    {expanded ? '▲ Hide Details' : '▼ Full Analysis + Cost + Scheme'}
+                  </button>
+
+                  {/* Expanded */}
+                  {expanded && (
+                    <div style={{ padding: '14px 18px', background: '#FAFBFC', borderTop: '1px solid #F0F2F5' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', color: '#374151', lineHeight: 1.6 }}>
+                        <div style={{ padding: '10px 12px', background: 'white', borderRadius: '8px', border: '1px solid #E8EDF2' }}>
+                          <div style={{ fontWeight: 700, color: '#003B7A', marginBottom: '3px' }}>🎯 Why Chosen (Evidence)</div>
+                          <div>{rec.why_chosen}</div>
+                        </div>
+                        <div style={{ padding: '10px 12px', background: 'white', borderRadius: '8px', border: '1px solid #E8EDF2' }}>
+                          <div style={{ fontWeight: 700, color: '#138808', marginBottom: '3px' }}>🛠️ Recommended Action</div>
+                          <div>{rec.how_to_fix}</div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                          <div style={{ padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #E8EDF2', textAlign: 'center' }}>
+                            <div style={{ fontSize: '9.5px', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Est. Cost</div>
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: '#1a1a1a' }}>
+                              {rec.estimated_cost_lakh >= 100
+                                ? `₹${(rec.estimated_cost_lakh/100).toFixed(1)} Cr`
+                                : `₹${rec.estimated_cost_lakh} L`}
+                            </div>
+                          </div>
+                          <div style={{ padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #E8EDF2', textAlign: 'center' }}>
+                            <div style={{ fontSize: '9.5px', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Beneficiaries</div>
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: '#003B7A' }}>
+                              {rec.beneficiaries ? (rec.beneficiaries).toLocaleString('en-IN') : '—'}
+                            </div>
+                          </div>
+                          <div style={{ padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #E8EDF2', textAlign: 'center' }}>
+                            <div style={{ fontSize: '9.5px', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Scheme</div>
+                            <div style={{ fontSize: '10px', fontWeight: 700, color: '#003B7A', lineHeight: 1.3 }}>{rec.scheme}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 // VILLAGE PROJECT & HABITATION SEARCH COMPONENT
 // ============================================================
 function VillageProjectSearch({ selectedState, selectedDistrict }) {
@@ -3540,108 +3799,9 @@ export default function App() {
                   </div>
                 </>
               )}
-              {activeTab === 'recommendations' && (
-                <>
-                  <GovPageBanner title="AI Development Recommendations" subtitle="Evidence-based priority solutions ranked by deficit severity" breadcrumbs={['MP Dashboard','AI Recommendations']} />
-                  <div className="gov-grid-2col" style={{ padding:'24px 28px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px' }}>
-                    {[
-                      {
-                        title: "Upgrade Katteri Clinic to CHC",
-                        tag: "Hospital Deficit",
-                        match: "97%",
-                        cost: "₹2.4 Crores",
-                        scheme: "National Health Mission",
-                        location: "Katteri Village, Mandya Taluk, Mandya District",
-                        why_chosen: "Katteri currently has only 1 sub-centre with zero active resident doctors, serving 14,000 citizens. NITI standard requires a CHC for populations > 10,000.",
-                        problem: "Nearest functional hospital is 18 km away. Emergency response times average 52 minutes.",
-                        how_to_fix: "Fund renovation of the existing Subcentre building, hire 2 resident medical officers, and assign 1 ambulance.",
-                        citizens_voice: "428 complaints registered on WhatsApp",
-                        color: "#C62B2B"
-                      },
-                      {
-                        title: "Lay Water Pipeline in Koppa East",
-                        tag: "Water Coverage Deficit",
-                        match: "92%",
-                        cost: "₹1.2 Crores",
-                        scheme: "Jal Jeevan Mission",
-                        location: "Koppa East Ward, Maddur Taluk, Mandya District",
-                        why_chosen: "Audit reveals piped water tap coverage is under 18% in Koppa East compared to 72% in surrounding areas.",
-                        problem: "Contaminated open-well usage has caused 85 water-borne illness cases this season.",
-                        how_to_fix: "Extend the main block water pipeline by 3.2 km and install 240 new domestic tap connections.",
-                        citizens_voice: "315 complaints registered by citizens",
-                        color: "#003B7A"
-                      },
-                      {
-                        title: "Build Primary School Block in Besagarahalli",
-                        tag: "PTR Ratio Deficit",
-                        match: "88%",
-                        cost: "₹0.8 Crores",
-                        scheme: "Samagra Shiksha Abhiyan",
-                        location: "Besagarahalli South, Maddur Taluk, Mandya District",
-                        why_chosen: "Pupil-Teacher Ratio (PTR) is 36:1, exceeding the national standard of 30:1. Classrooms are overcrowded with 48 students per room.",
-                        problem: "Lack of infrastructure has led to a 14% drop in student enrollment this year.",
-                        how_to_fix: "Construct 3 additional classrooms and hire 2 primary teachers under state Samagra allocation.",
-                        citizens_voice: "186 complaints registered by parents",
-                        color: "#FF6B1A"
-                      },
-                      {
-                        title: "Pave Main Road in Huliyurdurga",
-                        tag: "Road Connectivity Gap",
-                        match: "84%",
-                        cost: "₹3.1 Crores",
-                        scheme: "PMGSY Phase III",
-                        location: "Huliyurdurga Connector Road, Mandya District",
-                        why_chosen: "Huliyurdurga has 4.2 km of unpaved earthen road which gets completely washed away during monsoon rains.",
-                        problem: "Villagers are isolated from market centers and students miss high school classes for weeks.",
-                        how_to_fix: "Construct all-weather asphalt pavement with concrete drainage channels on both sides.",
-                        citizens_voice: "246 complaints registered with photos",
-                        color: "#138808"
-                      }
-                    ].map((r,i) => (
-                      <div key={i} className="gov-card" style={{ padding:'20px', borderLeft:`4px solid ${r.color}`, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
-                        <div>
-                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px' }}>
-                            <div>
-                              <h3 style={{ fontSize:'15px', fontWeight:700, color:'#003B7A', margin:'0 0 4px', fontFamily:'Space Grotesk, sans-serif' }}>{r.title}</h3>
-                              <span className="gov-badge" style={{ background:`${r.color}15`, color:r.color }}>{r.tag}</span>
-                            </div>
-                            <span style={{ background:`${r.color}15`, color:r.color, padding:'4px 10px', borderRadius:'12px', fontSize:'12px', fontWeight:700 }}>{r.match} Match</span>
-                          </div>
-                          
-                          {/* Rich Diagnostic Metrics */}
-                          <div style={{ display:'flex', flexDirection:'column', gap:'8px', fontSize:'12px', color:'#4A5568', margin:'12px 0 16px 0', lineHeight:1.5 }}>
-                            <div>
-                              <strong>📍 Location:</strong> <span style={{ color:'#1a1a1a', fontWeight:600 }}>{r.location}</span>
-                            </div>
-                            <div>
-                              <strong>❓ Problem:</strong> <span style={{ color:'#1a1a1a' }}>{r.problem}</span>
-                            </div>
-                            <div>
-                              <strong>🎯 Why Chosen:</strong> <span style={{ color:'#1a1a1a' }}>{r.why_chosen}</span>
-                            </div>
-                            <div>
-                              <strong>🛠️ Solution:</strong> <span style={{ color:'#1a1a1a' }}>{r.how_to_fix}</span>
-                            </div>
-                            <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'#EDF2F7', padding:'6px 10px', borderRadius:'6px', fontSize:'11.5px', color:'#2D3748', width:'fit-content', marginTop:'4px' }}>
-                              <span>🗣️</span> <strong>Citizen Volume:</strong> <span style={{ fontWeight:700, color:'#FF6B1A' }}>{r.citizens_voice}</span>
-                            </div>
-                          </div>
-                        </div>
 
-                        <div className="gov-grid-2col" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', borderTop:'1px solid #E2E8F0', paddingTop:'12px' }}>
-                          <div style={{ padding:'8px 10px', background:'#F5F7FA', borderRadius:'6px' }}>
-                            <div style={{ fontSize:'10px', color:'#999', marginBottom:'2px', fontWeight:600, textTransform:'uppercase' }}>Estimated Cost</div>
-                            <div style={{ fontSize:'13px', fontWeight:700, color:'#1a1a1a' }}>{r.cost}</div>
-                          </div>
-                          <div style={{ padding:'8px 10px', background:'#F5F7FA', borderRadius:'6px' }}>
-                            <div style={{ fontSize:'10px', color:'#999', marginBottom:'2px', fontWeight:600, textTransform:'uppercase' }}>Suggested Scheme</div>
-                            <div style={{ fontSize:'12px', fontWeight:700, color:'#003B7A' }}>{r.scheme}</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
+              {activeTab === 'recommendations' && (
+                <RecommendationsPanel sName={sName} dName={dName} />
               )}
 
               {activeTab === 'gaps' && (

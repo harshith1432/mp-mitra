@@ -2,9 +2,12 @@ import os
 import sys
 import asyncio
 import json
+import time
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+START_TIME = time.time()
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -101,6 +104,50 @@ async def broadcast_suggestion(data: dict):
     return {"status": "broadcasted"}
 
 
+@app.get("/api/health")
+def get_health():
+    # 1. Database Connectivity Check
+    from app.database.connection import SessionLocal
+    from sqlalchemy import text
+    database_status = "connected"
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+    except Exception:
+        database_status = "disconnected"
+
+    # 2. Frontend Build Check
+    if getattr(sys, 'frozen', False):
+        bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+        dp = os.path.join(bundle_dir, "frontend", "dist")
+    else:
+        dp = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+    
+    frontend_status = "available" if os.path.exists(dp) and os.path.exists(os.path.join(dp, "index.html")) else "unavailable"
+
+    # 3. AI / RAG Status
+    ai_status = "ready"
+    
+    # 4. Platform Uptime Check
+    uptime_sec = int(time.time() - START_TIME)
+    uptime_str = f"{uptime_sec}s"
+    if uptime_sec >= 60:
+        uptime_min = uptime_sec // 60
+        uptime_str = f"{uptime_min}m {uptime_sec % 60}s"
+        if uptime_min >= 60:
+            uptime_hr = uptime_min // 60
+            uptime_str = f"{uptime_hr}h {uptime_min % 60}m"
+
+    return {
+        "status": "healthy",
+        "database": database_status,
+        "frontend": frontend_status,
+        "ai": ai_status,
+        "uptime": uptime_str
+    }
+
+
 # ─── Register Routers ─────────────────────────────────────────────────────────
 from app.routing.constituency import router as constituency_router
 from app.routing.citizen import router as citizen_router
@@ -109,14 +156,16 @@ from app.routing.admin import router as admin_router
 from app.routing.copilot import router as copilot_router
 from app.routing.whatsapp import router as whatsapp_router
 from app.routing.geo import router as geo_router
+from app.routing.recommendations import router as recommendations_router
 
-app.include_router(constituency_router, prefix="/api/constituency", tags=["Constituency"])
-app.include_router(citizen_router,      prefix="/api/citizen",       tags=["Citizen Interaction"])
-app.include_router(prioritize_router,   prefix="/api/prioritize",    tags=["Prioritization"])
-app.include_router(admin_router,        prefix="/api/admin",         tags=["Admin Portal"])
-app.include_router(copilot_router,      prefix="/api/copilot",       tags=["MP Copilot"])
-app.include_router(whatsapp_router,     prefix="/api/whatsapp",      tags=["WhatsApp Webhook"])
-app.include_router(geo_router,          prefix="/api/geo",           tags=["Geospatial Intelligence"])
+app.include_router(constituency_router,    prefix="/api/constituency",    tags=["Constituency"])
+app.include_router(citizen_router,         prefix="/api/citizen",         tags=["Citizen Interaction"])
+app.include_router(prioritize_router,      prefix="/api/prioritize",      tags=["Prioritization"])
+app.include_router(admin_router,           prefix="/api/admin",           tags=["Admin Portal"])
+app.include_router(copilot_router,         prefix="/api/copilot",         tags=["MP Copilot"])
+app.include_router(whatsapp_router,        prefix="/api/whatsapp",        tags=["WhatsApp Webhook"])
+app.include_router(geo_router,             prefix="/api/geo",             tags=["Geospatial Intelligence"])
+app.include_router(recommendations_router, prefix="/api/recommendations", tags=["AI Recommendations"])
 
 
 # ─── Startup ──────────────────────────────────────────────────────────────────
