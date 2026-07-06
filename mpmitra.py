@@ -102,10 +102,9 @@ def is_process_mpmitra(pid: int) -> bool:
         proc = psutil.Process(pid)
         cmd = proc.cmdline()
         cmd_str = " ".join(cmd).lower()
-        if "mpmitra.py" in cmd_str and "--server" in cmd_str:
-            return True
-        if "python" in proc.name().lower() and ("mpmitra" in cmd_str or "uvicorn" in cmd_str):
-            return True
+        if "--server" in cmd_str:
+            if "mpmitra" in cmd_str or "python" in proc.name().lower() or "uvicorn" in cmd_str:
+                return True
         return False
     except Exception:
         return False
@@ -117,12 +116,12 @@ def get_running_pid() -> Optional[int]:
     if PID_FILE.exists():
         try:
             pid_str = PID_FILE.read_text().strip()
-            if pid_str:
+            if pid_str.isdigit():
                 pid = int(pid_str)
                 if is_process_mpmitra(pid):
                     return pid
                 else:
-                    log_message(f"[*] Detected stale PID file ({pid}). Cleaning it up.")
+                    log_message(f"[*] Stale PID file detected (process {pid} not running or not MP Mitra). Cleaning up.")
                     try:
                         PID_FILE.unlink()
                     except:
@@ -137,7 +136,6 @@ def get_running_pid() -> Optional[int]:
 
 def get_pid_on_port(port: int) -> Optional[int]:
     """Finds the PID of the process listening on the specified port, and checks if it's MP Mitra."""
-    # Method 1: Check connections
     try:
         for conn in psutil.net_connections(kind='inet'):
             if conn.status == 'LISTEN' and conn.laddr.port == port:
@@ -146,7 +144,6 @@ def get_pid_on_port(port: int) -> Optional[int]:
     except Exception:
         pass
     
-    # Method 2: Process iteration matching cmdline
     try:
         for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
             cmd = proc.info.get('cmdline') or []
@@ -160,12 +157,12 @@ def get_pid_on_port(port: int) -> Optional[int]:
 
 def start_services(open_browser: bool = True):
     """Starts the MP Mitra background service with robust health checking and detachment."""
-    log_message("[*] Launching MP Mitra Background Service Redesign...")
+    log_message("[*] Starting MP Mitra Background Service...")
     
     port = int(config_manager.get("PORT", 8000))
     host = config_manager.get("HOST", "127.0.0.1")
     
-    # 1. Check if PID file/process already exists
+    # 1. Check if running already
     pid = get_running_pid()
     if not pid:
         pid = get_pid_on_port(port)
@@ -206,87 +203,84 @@ def start_services(open_browser: bool = True):
             try:
                 proc = psutil.Process(pid)
                 proc.terminate()
-                psutil.wait_procs([proc], timeout=3)
+                psutil.wait_procs([proc], timeout=5)
             except Exception:
                 pass
             if PID_FILE.exists():
                 try: PID_FILE.unlink()
                 except: pass
 
-    # 2. Check if the port is in use by another application
+    # 2. Check port availability
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.bind((host, port))
         s.close()
     except Exception as e:
-        log_message(f"[ERROR] Port {port} is already occupied by another application. Cannot start service.")
+        log_message(f"[ERROR] Port {port} is occupied by another application. Cannot start service.")
         sys.exit(1)
 
-    # 3. Resolve paths
+    # 3. Setup paths and process
     script_dir = os.path.dirname(os.path.abspath(__file__))
     py_exe = sys.executable
     script_path = os.path.abspath(__file__)
-
-    # 4. Detach process and write logs directly to file
-    log_message(f"Starting server on http://{host}:{port}...")
-    log_message(f"Logs redirected to: {LOG_FILE}")
     
+    log_message(f"Redirecting logs to: {LOG_FILE}")
     try:
         log_fh = open(LOG_FILE, 'a', encoding='utf-8')
     except Exception as e:
-        log_message(f"[ERROR] Cannot write to log file {LOG_FILE}: {e}")
+        log_message(f"[ERROR] Cannot open log file: {e}")
         sys.exit(1)
 
+    # 4. Popen launch
     try:
         if os.name == 'nt':
             creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
             proc = subprocess.Popen(
                 [py_exe, "-u", script_path, "--server"],
                 cwd=script_dir,
+                stdin=subprocess.DEVNULL,
                 stdout=log_fh,
                 stderr=subprocess.STDOUT,
+                close_fds=True,
                 creationflags=creationflags
             )
         else:
             proc = subprocess.Popen(
                 [py_exe, "-u", script_path, "--server"],
                 cwd=script_dir,
+                stdin=subprocess.DEVNULL,
                 stdout=log_fh,
                 stderr=subprocess.STDOUT,
+                close_fds=True,
                 start_new_session=True
             )
-            
+        
         real_pid = proc.pid
-        if not real_pid:
-            raise RuntimeError("Subprocess did not return a valid process ID.")
+        if not real_pid or real_pid <= 0:
+            raise RuntimeError(f"Invalid PID returned by OS: {real_pid}")
             
         PID_FILE.write_text(str(real_pid))
-        log_message(f"[OK] Detached process spawned. Operating System PID: {real_pid}")
+        log_message(f"[OK] Launched subprocess. Real OS PID: {real_pid}")
         
     except Exception as e:
         log_message(f"[ERROR] Failed to start subprocess: {e}")
         sys.exit(1)
 
-    # 5. Wait for /api/health to return HTTP 200 with 120s timeout
-    log_message("Waiting for API health check to become online (timeout: 120 seconds)...")
+    # 5. Wait for /api/health with 120s timeout, streaming logs
+    log_message("Waiting for API health check (timeout: 120 seconds)...")
     start_time = time.time()
     last_log_pos = LOG_FILE.stat().st_size if LOG_FILE.exists() else 0
     
     while time.time() - start_time < 120:
         if not is_process_mpmitra(real_pid):
-            log_message("[ERROR] Process died unexpectedly during startup. Log output follows:")
-            try:
-                with open(LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-                    f.seek(max(0, last_log_pos - 2000))
-                    print(f.read())
-            except:
-                pass
+            log_message("[ERROR] Process died during startup. Port may be occupied or crashed.")
             if PID_FILE.exists():
                 try: PID_FILE.unlink()
                 except: pass
             sys.exit(1)
             
+        # Stream logs in real-time to show startup progress (AI models loading, etc.)
         try:
             current_size = LOG_FILE.stat().st_size
             if current_size > last_log_pos:
@@ -302,7 +296,7 @@ def start_services(open_browser: bool = True):
 
         try:
             api_url = f"http://{host}:{port}/api/health"
-            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Startup'})
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Startup-Check'})
             with urllib.request.urlopen(req, timeout=1) as response:
                 if response.status == 200:
                     health_data = json.loads(response.read().decode())
@@ -322,7 +316,7 @@ def start_services(open_browser: bool = True):
             
         time.sleep(1)
 
-    log_message("[ERROR] Service did not become healthy within 120 seconds. Please check logs.")
+    log_message("[ERROR] Service did not become healthy within 120 seconds.")
     sys.exit(1)
 
 def stop_services():
@@ -332,7 +326,9 @@ def stop_services():
     pid = None
     if PID_FILE.exists():
         try:
-            pid = int(PID_FILE.read_text().strip())
+            pid_str = PID_FILE.read_text().strip()
+            if pid_str.isdigit():
+                pid = int(pid_str)
         except:
             pass
             
@@ -342,11 +338,9 @@ def stop_services():
         
     if not pid:
         log_message("[WARN] No running service instance found (PID file missing or inactive).")
-        if is_server_running():
-            log_message("[WARN] Port is busy but no matching MP Mitra process found. Skipping force kill.")
         return
 
-    log_message(f"Terminating process tree for PID: {pid}")
+    log_message(f"Terminating process for PID: {pid}")
     try:
         if not psutil.pid_exists(pid):
             log_message("[OK] Process already stopped.")
@@ -355,11 +349,20 @@ def stop_services():
             return
             
         proc = psutil.Process(pid)
+        
+        # Terminate children first, then parent
+        try:
+            children = proc.children(recursive=True)
+            for child in children:
+                child.terminate()
+        except:
+            pass
+            
         proc.terminate()
         
         gone, alive = psutil.wait_procs([proc], timeout=5)
         if alive:
-            log_message(f"Process did not exit in 5 seconds. Sending SIGKILL to process and its children...")
+            log_message(f"Process did not exit in 5 seconds. Killing process and children...")
             for a in alive:
                 try:
                     for child in a.children(recursive=True):
@@ -389,7 +392,9 @@ def show_status():
     pid = None
     if PID_FILE.exists():
         try:
-            pid = int(PID_FILE.read_text().strip())
+            pid_str = PID_FILE.read_text().strip()
+            if pid_str.isdigit():
+                pid = int(pid_str)
         except:
             pass
             
