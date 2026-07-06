@@ -9,6 +9,7 @@ import urllib.request
 import urllib.error
 import shutil
 import hashlib
+import psutil
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -20,7 +21,7 @@ else:  # macOS / Linux
 
 APPDATA.mkdir(parents=True, exist_ok=True)
 CONFIG_FILE = APPDATA / 'config.json'
-PID_FILE = APPDATA / 'mpmitra.pid'
+PID_FILE = APPDATA / 'service.pid'
 LOG_DIR = APPDATA / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
 LOG_FILE = LOG_DIR / 'mpmitra.log'
@@ -91,153 +92,291 @@ def is_server_running() -> bool:
     except:
         return False
 
+def is_process_mpmitra(pid: int) -> bool:
+    """Verifies that a process is active and is indeed the MP Mitra backend service."""
+    if pid <= 0:
+        return False
+    try:
+        if not psutil.pid_exists(pid):
+            return False
+        proc = psutil.Process(pid)
+        cmd = proc.cmdline()
+        cmd_str = " ".join(cmd).lower()
+        if "mpmitra.py" in cmd_str and "--server" in cmd_str:
+            return True
+        if "python" in proc.name().lower() and ("mpmitra" in cmd_str or "uvicorn" in cmd_str):
+            return True
+        return False
+    except Exception:
+        return False
+
 def get_running_pid() -> Optional[int]:
-    """Returns the process ID stored in the PID file if active."""
+    """Reads PID from the PID file and verifies if the process exists and is MP Mitra.
+    If it does not exist or is not MP Mitra, removes the stale PID file and returns None.
+    """
     if PID_FILE.exists():
         try:
-            pid = int(PID_FILE.read_text().strip())
-            # Check if process is actually running
-            if os.name == 'nt':
-                # Windows tasklist check
-                output = subprocess.check_output(f'tasklist /FI "PID eq {pid}"', shell=True).decode()
-                if str(pid) in output:
+            pid_str = PID_FILE.read_text().strip()
+            if pid_str:
+                pid = int(pid_str)
+                if is_process_mpmitra(pid):
                     return pid
-            else:
-                # Unix kill -0 check
-                os.kill(pid, 0)
-                return pid
-        except:
-            pass
+                else:
+                    log_message(f"[*] Detected stale PID file ({pid}). Cleaning it up.")
+                    try:
+                        PID_FILE.unlink()
+                    except:
+                        pass
+        except Exception as e:
+            log_message(f"[WARN] Failed to parse/validate PID file: {e}")
+            try:
+                PID_FILE.unlink()
+            except:
+                pass
     return None
 
-def get_pid_on_port(port: int):
-    """Finds the PID of the process listening on the specified port."""
+def get_pid_on_port(port: int) -> Optional[int]:
+    """Finds the PID of the process listening on the specified port, and checks if it's MP Mitra."""
+    # Method 1: Check connections
     try:
-        if os.name == 'nt':
-            out = subprocess.check_output("netstat -ano", shell=True).decode()
-            for line in out.splitlines():
-                if f"127.0.0.1:{port}" in line or f"0.0.0.0:{port}" in line:
-                    if "LISTENING" in line:
-                        parts = [p.strip() for p in line.split() if p.strip()]
-                        if len(parts) >= 5:
-                            try:
-                                return int(parts[-1])
-                            except ValueError:
-                                pass
-        else:
-            out = subprocess.check_output(f"lsof -t -i:{port}", shell=True).decode()
-            pids = [int(p.strip()) for p in out.splitlines() if p.strip()]
-            if pids:
-                return pids[0]
+        for conn in psutil.net_connections(kind='inet'):
+            if conn.status == 'LISTEN' and conn.laddr.port == port:
+                if conn.pid and is_process_mpmitra(conn.pid):
+                    return conn.pid
     except Exception:
         pass
+    
+    # Method 2: Process iteration matching cmdline
+    try:
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            cmd = proc.info.get('cmdline') or []
+            cmd_str = " ".join(cmd).lower()
+            if "mpmitra.py" in cmd_str and "--server" in cmd_str:
+                return proc.info['pid']
+    except Exception:
+        pass
+        
     return None
 
-
-
-
 def start_services(open_browser: bool = True):
-    """Launches backend FastAPI web server and mounts built frontend."""
-    log_message("[*] Starting MP Mitra Decisional Twin platform...")
+    """Starts the MP Mitra background service with robust health checking and detachment."""
+    log_message("[*] Launching MP Mitra Background Service Redesign...")
     
-    # 1. Doctor check for port conflicts
-    port = config_manager.get("PORT", 8000)
+    port = int(config_manager.get("PORT", 8000))
     host = config_manager.get("HOST", "127.0.0.1")
-    if is_server_running():
-        log_message(f"[ERROR] Port {port} is already in use. Service is likely already running.")
+    
+    # 1. Check if PID file/process already exists
+    pid = get_running_pid()
+    if not pid:
+        pid = get_pid_on_port(port)
+        if pid:
+            try:
+                PID_FILE.write_text(str(pid))
+            except:
+                pass
+                
+    if pid:
+        is_healthy = False
+        uptime = "unknown"
+        try:
+            api_url = f"http://{host}:{port}/api/health"
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Check'})
+            with urllib.request.urlopen(req, timeout=3) as response:
+                if response.status == 200:
+                    health_data = json.loads(response.read().decode())
+                    if health_data.get("status") == "healthy":
+                        is_healthy = True
+                        uptime = health_data.get("uptime", "unknown")
+        except Exception:
+            pass
+            
+        if is_healthy:
+            print("\nMP Mitra is already running.")
+            print(f"PID: {pid}")
+            print(f"Port: {port}")
+            print(f"Uptime: {uptime}\n")
+            
+            if open_browser:
+                url = f"http://{host}:{port}"
+                log_message(f"Opening browser at {url}...")
+                webbrowser.open(url)
+            sys.exit(0)
+        else:
+            log_message(f"[WARN] MP Mitra process {pid} is running but health check failed. Terminating to restart clean...")
+            try:
+                proc = psutil.Process(pid)
+                proc.terminate()
+                psutil.wait_procs([proc], timeout=3)
+            except Exception:
+                pass
+            if PID_FILE.exists():
+                try: PID_FILE.unlink()
+                except: pass
+
+    # 2. Check if the port is in use by another application
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind((host, port))
+        s.close()
+    except Exception as e:
+        log_message(f"[ERROR] Port {port} is already occupied by another application. Cannot start service.")
         sys.exit(1)
 
-    # 2. Resolve paths
+    # 3. Resolve paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
     py_exe = sys.executable
     script_path = os.path.abspath(__file__)
-    
-    # 3. Spawn fully detached server process
+
+    # 4. Detach process and write logs directly to file
     log_message(f"Starting server on http://{host}:{port}...")
+    log_message(f"Logs redirected to: {LOG_FILE}")
+    
+    try:
+        log_fh = open(LOG_FILE, 'a', encoding='utf-8')
+    except Exception as e:
+        log_message(f"[ERROR] Cannot write to log file {LOG_FILE}: {e}")
+        sys.exit(1)
+
     try:
         if os.name == 'nt':
-            # Use wmic process call create to spawn a process completely independent of
-            # the parent job object, guaranteeing survival after CLI script exits
-            wmic_cmd = f'wmic process call create "\""\"" {py_exe} \"\"\"" -u \"\"\"" {script_path} \"\"\"" --server"'
-            wmic_cmd = f"\"{py_exe}\" -u \"{script_path}\" --server"
-            full_wmic = f'wmic process call create "{wmic_cmd}"'
-            subprocess.run(full_wmic, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            # Wait up to 15 seconds to find the listening process
-            server_pid = None
-            for _ in range(30):
-                time.sleep(0.5)
-                server_pid = get_pid_on_port(port)
-                if server_pid:
-                    break
-            
-            pid_to_save = server_pid or 0
-            PID_FILE.write_text(str(pid_to_save))
-            log_message(f"Service running in background. Process ID: {pid_to_save}")
-        else:
-            # Unix detached process
+            creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
             proc = subprocess.Popen(
                 [py_exe, "-u", script_path, "--server"],
                 cwd=script_dir,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                preexec_fn=os.setpgrp
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+                creationflags=creationflags
             )
-            PID_FILE.write_text(str(proc.pid))
-            log_message(f"Service running in background. Process ID: {proc.pid}")
+        else:
+            proc = subprocess.Popen(
+                [py_exe, "-u", script_path, "--server"],
+                cwd=script_dir,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+                start_new_session=True
+            )
+            
+        real_pid = proc.pid
+        if not real_pid:
+            raise RuntimeError("Subprocess did not return a valid process ID.")
+            
+        PID_FILE.write_text(str(real_pid))
+        log_message(f"[OK] Detached process spawned. Operating System PID: {real_pid}")
         
     except Exception as e:
-        log_message(f"[ERROR] Failed to start service: {e}")
+        log_message(f"[ERROR] Failed to start subprocess: {e}")
         sys.exit(1)
 
-    # 4. Wait for server readiness health check
-    log_message("Waiting for service to initialize...")
-    for _ in range(15):
-        time.sleep(1)
-        if is_server_running():
-            log_message("[OK] MP Mitra Platform is ready and online!")
-            if open_browser:
-                url = f"http://127.0.0.1:{port}"
-                log_message(f"Opening browser at {url}...")
-                webbrowser.open(url)
-            # Run silent background update check after startup
-            _auto_check_update_background()
-            return
+    # 5. Wait for /api/health to return HTTP 200 with 120s timeout
+    log_message("Waiting for API health check to become online (timeout: 120 seconds)...")
+    start_time = time.time()
+    last_log_pos = LOG_FILE.stat().st_size if LOG_FILE.exists() else 0
+    
+    while time.time() - start_time < 120:
+        if not is_process_mpmitra(real_pid):
+            log_message("[ERROR] Process died unexpectedly during startup. Log output follows:")
+            try:
+                with open(LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+                    f.seek(max(0, last_log_pos - 2000))
+                    print(f.read())
+            except:
+                pass
+            if PID_FILE.exists():
+                try: PID_FILE.unlink()
+                except: pass
+            sys.exit(1)
             
-    log_message("[WARN] Service started but did not respond to health check in time. Please view logs.")
+        try:
+            current_size = LOG_FILE.stat().st_size
+            if current_size > last_log_pos:
+                with open(LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+                    f.seek(last_log_pos)
+                    new_text = f.read()
+                    if new_text:
+                        sys.stdout.write(new_text)
+                        sys.stdout.flush()
+                last_log_pos = current_size
+        except Exception:
+            pass
+
+        try:
+            api_url = f"http://{host}:{port}/api/health"
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Startup'})
+            with urllib.request.urlopen(req, timeout=1) as response:
+                if response.status == 200:
+                    health_data = json.loads(response.read().decode())
+                    if health_data.get("status") == "healthy":
+                        log_message(f"\n[OK] MP Mitra Platform is ready and online!")
+                        log_message(f"Uptime: {health_data.get('uptime')}")
+                        log_message(f"Database: {health_data.get('database')}")
+                        log_message(f"AI: {health_data.get('ai')}")
+                        
+                        if open_browser:
+                            url = f"http://{host}:{port}"
+                            log_message(f"Opening browser at {url}...")
+                            webbrowser.open(url)
+                        return
+        except Exception:
+            pass
+            
+        time.sleep(1)
+
+    log_message("[ERROR] Service did not become healthy within 120 seconds. Please check logs.")
+    sys.exit(1)
 
 def stop_services():
     """Gracefully terminates background service."""
     log_message("[*] Stopping MP Mitra Platform...")
-    port = config_manager.get("PORT", 8000)
-    pid = get_running_pid() or get_pid_on_port(port)
     
+    pid = None
+    if PID_FILE.exists():
+        try:
+            pid = int(PID_FILE.read_text().strip())
+        except:
+            pass
+            
+    port = int(config_manager.get("PORT", 8000))
+    if not pid:
+        pid = get_pid_on_port(port)
+        
     if not pid:
         log_message("[WARN] No running service instance found (PID file missing or inactive).")
         if is_server_running():
-            log_message("Note: Server port is busy. Attempting to clear port 8000 using command tools...")
-            if os.name == 'nt':
-                try:
-                    subprocess.run("taskkill /IM python.exe /F", shell=True)
-                    subprocess.run("taskkill /IM uvicorn.exe /F", shell=True)
-                    log_message("[OK] Process terminated.")
-                except:
-                    pass
+            log_message("[WARN] Port is busy but no matching MP Mitra process found. Skipping force kill.")
         return
 
-    log_message(f"Killing process tree for PID: {pid}")
+    log_message(f"Terminating process tree for PID: {pid}")
     try:
-        if os.name == 'nt':
-            subprocess.run(f"taskkill /PID {pid} /T /F", shell=True)
-        else:
-            import signal
-            os.killpg(os.getpgid(pid), signal.SIGTERM)
+        if not psutil.pid_exists(pid):
+            log_message("[OK] Process already stopped.")
+            if PID_FILE.exists():
+                PID_FILE.unlink()
+            return
+            
+        proc = psutil.Process(pid)
+        proc.terminate()
         
+        gone, alive = psutil.wait_procs([proc], timeout=5)
+        if alive:
+            log_message(f"Process did not exit in 5 seconds. Sending SIGKILL to process and its children...")
+            for a in alive:
+                try:
+                    for child in a.children(recursive=True):
+                        child.kill()
+                    a.kill()
+                except Exception:
+                    pass
+                    
         if PID_FILE.exists():
-            PID_FILE.unlink()
+            try: PID_FILE.unlink()
+            except: pass
         log_message("[OK] Services successfully stopped.")
     except Exception as e:
         log_message(f"[ERROR] Failed to stop process: {e}")
+        if PID_FILE.exists():
+            try: PID_FILE.unlink()
+            except: pass
 
 def restart_services():
     """Restarts background service."""
@@ -247,70 +386,81 @@ def restart_services():
 
 def show_status():
     """Retrieves and prints current service health metrics in professional format."""
-    pid = get_running_pid()
-    running = is_server_running()
-    port = config_manager.get("PORT", 8000)
-    version = VERSION
-    
-    # 1. Determine Backend Status
-    backend_status = "Running" if running else "Stopped"
-    
-    # 2. Determine Frontend Status
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    dist_path = os.path.abspath(os.path.join(script_dir, "frontend", "dist"))
-    if os.path.exists(dist_path) and os.path.exists(os.path.join(dist_path, "index.html")):
-        frontend_status = "Built"
-    else:
-        frontend_status = "Missing"
-        
-    # 3. Determine API Health
-    api_health = "Unknown"
-    if running:
+    pid = None
+    if PID_FILE.exists():
         try:
-            api_url = f"http://127.0.0.1:{port}/api/constituency/filter-options"
+            pid = int(PID_FILE.read_text().strip())
+        except:
+            pass
+            
+    port = int(config_manager.get("PORT", 8000))
+    host = config_manager.get("HOST", "127.0.0.1")
+    
+    is_running = False
+    if pid and is_process_mpmitra(pid):
+        is_running = True
+    else:
+        pid = get_pid_on_port(port)
+        if pid:
+            is_running = True
+            
+    cpu_pct = "0.0%"
+    ram_mb = "0.0 MB"
+    if is_running and pid:
+        try:
+            proc = psutil.Process(pid)
+            cpu_pct = f"{proc.cpu_percent(interval=0.1):.1f}%"
+            ram_mb = f"{proc.memory_info().rss / (1024 * 1024):.1f} MB"
+        except Exception:
+            pass
+            
+    backend_status = "Stopped"
+    frontend_status = "Offline"
+    db_status = "Offline"
+    ai_status = "Offline"
+    health_status = "Offline"
+    uptime = "N/A"
+    
+    if is_running:
+        backend_status = "Running"
+        try:
+            api_url = f"http://{host}:{port}/api/health"
             req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Status'})
             with urllib.request.urlopen(req, timeout=2) as response:
                 if response.status == 200:
-                    api_health = "Healthy"
+                    data = json.loads(response.read().decode())
+                    health_status = data.get("status", "Healthy")
+                    db_status = data.get("database", "Connected")
+                    frontend_status = data.get("frontend", "Available")
+                    ai_status = data.get("ai", "Ready")
+                    uptime = data.get("uptime", "N/A")
                 else:
-                    api_health = "Unhealthy"
-        except:
-            api_health = "Unhealthy"
+                    health_status = f"Unhealthy (HTTP {response.status})"
+        except Exception as e:
+            health_status = f"Unhealthy (Connection error: {e})"
     else:
-        api_health = "Offline"
-        
-    # 4. Determine Database Status
-    db_status = "Disconnected"
-    db_url = config_manager.get("DATABASE_URL")
-    if db_url.startswith("sqlite"):
-        db_status = "Connected"
-    else:
-        try:
-            try:
-                from sqlalchemy import create_engine, text
-                engine = create_engine(db_url)
-                with engine.connect() as conn:
-                    conn.execute(text("SELECT 1"))
-                db_status = "Connected"
-            except:
-                import psycopg2
-                conn = psycopg2.connect(db_url, connect_timeout=2)
-                conn.close()
-                db_status = "Connected"
-        except:
-            db_status = "Connection Failed"
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        dp = os.path.abspath(os.path.join(script_dir, "frontend", "dist"))
+        if os.path.exists(dp) and os.path.exists(os.path.join(dp, "index.html")):
+            frontend_status = "Built"
+        else:
+            frontend_status = "Missing"
 
-    print("----------------------------------------")
-    print("MP Mitra Status")
-    print("----------------------------------------")
-    print(f"Backend        : {backend_status}")
-    print(f"Frontend       : {frontend_status}")
-    print(f"Dashboard      : http://127.0.0.1:{port}")
-    print(f"API            : {api_health}")
-    print(f"Database       : {db_status}")
-    print(f"Port           : {port}")
-    print(f"Version        : {version}")
-    print("----------------------------------------")
+    print("========================================")
+    print("MP Mitra Background Service Status")
+    print("========================================")
+    print(f"Backend       : {backend_status}")
+    print(f"Frontend      : {frontend_status}")
+    print(f"PID           : {pid if is_running else 'None'}")
+    print(f"CPU Usage     : {cpu_pct}")
+    print(f"RAM Usage     : {ram_mb}")
+    print(f"Port          : {port}")
+    print(f"Version       : {VERSION}")
+    print(f"Database      : {db_status}")
+    print(f"AI Status     : {ai_status}")
+    print(f"Health Check  : {health_status}")
+    print(f"Uptime        : {uptime}")
+    print("========================================")
 
 def show_logs(lines: int = 50, follow: bool = False):
     """Tail display of application log file."""
@@ -328,7 +478,7 @@ def show_logs(lines: int = 50, follow: bool = False):
         print("\n--- Streaming live logs (Press Ctrl+C to stop) ---")
         try:
             with open(LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-                f.seek(0, 2)  # Go to end
+                f.seek(0, 2)
                 while True:
                     line = f.readline()
                     if not line:
@@ -344,93 +494,112 @@ def run_doctor():
     print("      MP MITRA SYSTEM DOCTOR DIAGNOSTICS          ")
     print("==================================================")
     
-    # 1. Backend Status & Port Availability
-    port = config_manager.get("PORT", 8000)
-    host = config_manager.get("HOST", "127.0.0.1")
-    running = is_server_running()
-    if running:
-        print(f"[OK] Backend Status: ONLINE (Server is running)")
-        print(f"[WARN] Port Availability: Port {port} is currently IN USE by our active server.")
-    else:
-        print(f"[OK] Backend Status: OFFLINE (Server is not running)")
-        import socket
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # 1. PID File Audit
+    print("[*] Auditing PID file...")
+    if PID_FILE.exists():
         try:
-            s.bind((host, int(port)))
-            s.close()
-            print(f"[OK] Port Availability: Port {port} is FREE and available.")
+            pid_val = PID_FILE.read_text().strip()
+            print(f"    - PID file exists: {PID_FILE}")
+            print(f"    - Stored PID: {pid_val}")
+            if pid_val.isdigit() and is_process_mpmitra(int(pid_val)):
+                print(f"    - [OK] Running process matching PID found.")
+            else:
+                print(f"    - [WARN] Stored PID process does not exist or is not MP Mitra.")
         except Exception as e:
-            print(f"[ERROR] Port Availability: Port {port} is BLOCKED/IN USE by another application ({e}).")
-
-    # 2. Frontend build & Static asset availability
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    dist_path = os.path.abspath(os.path.join(script_dir, "frontend", "dist"))
-    if os.path.exists(dist_path):
-        print(f"[OK] Frontend Build: FOUND at {dist_path}")
-        if os.path.exists(os.path.join(dist_path, "index.html")):
-            print("[OK] Static Assets: index.html exists.")
-        else:
-            print("[ERROR] Static Assets: index.html is MISSING from dist folder.")
-        if os.path.exists(os.path.join(dist_path, "assets")):
-            print("[OK] Static Assets: assets directory exists.")
-        else:
-            print("[ERROR] Static Assets: assets directory is MISSING from dist folder.")
+            print(f"    - [ERROR] Failed to read PID file: {e}")
     else:
-        print(f"[ERROR] Frontend Build: MISSING (Build directory not found at {dist_path})")
+        print("    - [INFO] PID file does not exist (service likely stopped).")
 
-    # 3. Database Health Check
+    # 2. Running Process Audit
+    print("[*] Auditing active processes...")
+    port = int(config_manager.get("PORT", 8000))
+    pid_on_port = get_pid_on_port(port)
+    if pid_on_port:
+        print(f"    - [OK] MP Mitra process running on port {port} (PID: {pid_on_port}).")
+    else:
+        print(f"    - [INFO] No MP Mitra process found running on port {port}.")
+
+    # 3. Port Occupancy
+    print("[*] Checking port availability...")
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        host = config_manager.get("HOST", "127.0.0.1")
+        s.bind((host, port))
+        s.close()
+        print(f"    - [OK] Port {port} is free and available.")
+    except Exception as e:
+        print(f"    - [WARN] Port {port} is occupied. (This is normal if the service is running).")
+
+    # 4. Health Endpoint
+    print("[*] Testing health check API...")
+    if pid_on_port or is_server_running():
+        try:
+            api_url = f"http://127.0.0.1:{port}/api/health"
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Doctor'})
+            with urllib.request.urlopen(req, timeout=3) as response:
+                if response.status == 200:
+                    health_data = json.loads(response.read().decode())
+                    print(f"    - [OK] Health endpoint returned HTTP 200.")
+                    print(f"    - [OK] Status: {health_data.get('status')}")
+                    print(f"    - [OK] Database: {health_data.get('database')}")
+                    print(f"    - [OK] Uptime: {health_data.get('uptime')}")
+                else:
+                    print(f"    - [ERROR] Health endpoint returned HTTP {response.status}.")
+        except Exception as e:
+            print(f"    - [ERROR] Failed to connect to health endpoint: {e}")
+    else:
+        print("    - [INFO] Server is offline, skipping health endpoint check.")
+
+    # 5. Database connectivity
+    print("[*] Auditing database connectivity...")
     db_url = config_manager.get("DATABASE_URL")
-    print(f"[*] Testing Database: {db_url}")
     if db_url.startswith("sqlite"):
         try:
             sqlite_path = db_url.replace("sqlite:///", "")
-            if not os.path.isabs(sqlite_path):
-                sqlite_path = os.path.abspath(os.path.join(script_dir, sqlite_path))
             sqlite_dir = Path(sqlite_path).parent
             if sqlite_dir.exists():
-                print("[OK] Database Health: Connected (SQLite local DB file path writeable)")
+                print(f"    - [OK] SQLite database path exists and is writeable.")
             else:
-                print("[WARN] Database Health: Directory for SQLite file does not exist yet.")
+                print(f"    - [WARN] SQLite database directory does not exist yet.")
         except Exception as e:
-            print(f"[ERROR] Database Health: SQLite path validation failed ({e})")
+            print(f"    - [ERROR] Failed to validate SQLite path: {e}")
     else:
         try:
-            try:
-                from sqlalchemy import create_engine, text
-                engine = create_engine(db_url)
-                with engine.connect() as conn:
-                    conn.execute(text("SELECT 1"))
-                print("[OK] Database Health: Connected (PostgreSQL engine connected successfully)")
-            except Exception:
-                import psycopg2
-                conn = psycopg2.connect(db_url, connect_timeout=3)
-                conn.close()
-                print("[OK] Database Health: Connected (PostgreSQL connected successfully)")
+            from sqlalchemy import create_engine, text
+            engine = create_engine(db_url)
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            print(f"    - [OK] PostgreSQL connectivity verified successfully.")
         except Exception as e:
-            print(f"[ERROR] Database Health: Connection failed ({e})")
+            print(f"    - [ERROR] Database connection failed: {e}")
 
-    # 4. Firebase Configuration
+    # 6. Frontend Build Audit
+    print("[*] Checking frontend static assets...")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dp = os.path.abspath(os.path.join(script_dir, "frontend", "dist"))
+    if os.path.exists(dp) and os.path.exists(os.path.join(dp, "index.html")):
+        print(f"    - [OK] Frontend static assets compiled successfully at: {dp}")
+    else:
+        print(f"    - [ERROR] Frontend build is missing at: {dp}. Run 'npm run build' inside frontend directory.")
+
+    # 7. Firebase Audit
+    print("[*] Auditing Firebase account setup...")
     fb_svc = config_manager.get_secret("FIREBASE_SERVICE_ACCOUNT_JSON")
     if fb_svc:
-        print("[OK] Firebase Configuration: DETECTED (Securely Encrypted)")
+        print("    - [OK] Firebase Service Account credentials found.")
     else:
-        print("[WARN] Firebase Configuration: MISSING (Using local database/mock credentials)")
+        print("    - [WARN] Firebase Credentials missing. Utilizing mock fallback credentials.")
 
-    # 5. API Health Check
-    if running:
-        print("[*] Testing API Health...")
-        try:
-            api_url = f"http://127.0.0.1:{port}/api/constituency/filter-options"
-            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Doctor'})
-            with urllib.request.urlopen(req, timeout=4) as response:
-                if response.status == 200:
-                    print("[OK] API Health: HEALTHY (Endpoints responding successfully)")
-                else:
-                    print(f"[ERROR] API Health: UNHEALTHY (Status code: {response.status})")
-        except Exception as e:
-            print(f"[ERROR] API Health: UNHEALTHY (Unable to connect to active API: {e})")
-    else:
-        print("[WARN] API Health: Server is offline, health check skipped.")
+    # 8. Permissions Check
+    print("[*] Auditing AppData directory write permissions...")
+    try:
+        test_file = APPDATA / '.perm_test'
+        test_file.write_text('test')
+        test_file.unlink()
+        print(f"    - [OK] Full read/write access verified for AppData directory: {APPDATA}")
+    except Exception as e:
+        print(f"    - [ERROR] AppData folder permissions check failed: {e}")
 
     print("==================================================")
 
