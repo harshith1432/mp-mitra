@@ -2306,12 +2306,30 @@ function WebScraperDatabaseConsole({ selectedState, selectedDistrict, crawledDat
 // ============================================================
 export default function App() {
   const { t } = useLanguage();
+
+  // ── Per-tab isolation using sessionStorage ───────────────────
+  // Each browser tab gets a unique tabId so state (portal, active page,
+  // district, state) is completely isolated — no cross-tab contamination.
+  const TAB_ID = (() => {
+    let id = sessionStorage.getItem('_mpmitra_tab_id');
+    if (!id) {
+      id = 'tab_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now();
+      sessionStorage.setItem('_mpmitra_tab_id', id);
+    }
+    return id;
+  })();
+  const ss = {
+    get: (key) => sessionStorage.getItem(`${TAB_ID}::${key}`),
+    set: (key, val) => sessionStorage.setItem(`${TAB_ID}::${key}`, val),
+    remove: (key) => sessionStorage.removeItem(`${TAB_ID}::${key}`),
+  };
+
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [firestoreComplaints, setFirestoreComplaints] = useState([]);
   const [firestoreProjects, setFirestoreProjects] = useState([]);
-  const [selectedPortal, setSelectedPortal] = useState(null);
-  const [activeTab, setActiveTab] = useState('home');
+  const [selectedPortal, setSelectedPortal] = useState(() => ss.get('portal') || null);
+  const [activeTab, setActiveTab] = useState(() => ss.get('activeTab') || 'home');
 
   // Interactive Card Modal states
   const [cardModalOpen, setCardModalOpen] = useState(false);
@@ -2348,19 +2366,31 @@ export default function App() {
   ];
   const [states, setStates] = useState(FALLBACK_STATES);
   const [districts, setDistricts] = useState(() => {
-    const savedState = localStorage.getItem('mp_state') || 'TELANGANA';
+    const savedState = ss.get('mp_state') || localStorage.getItem('mp_state') || 'TELANGANA';
     return fallbackDistrictsMap[savedState.toUpperCase()] || FALLBACK_DISTRICTS_TELANGANA;
   });
-  // MP constituency persisted in localStorage — locked until MP explicitly edits
-  const [selectedState, setSelectedState] = useState(() => localStorage.getItem('mp_state') || 'TELANGANA');
-  const [selectedDistrict, setSelectedDistrict] = useState(() => localStorage.getItem('mp_district') || 'ADILABAD');
+  // MP constituency — per-tab sessionStorage first, then cross-tab localStorage fallback
+  const [selectedState, setSelectedState] = useState(
+    () => ss.get('mp_state') || localStorage.getItem('mp_state') || 'TELANGANA'
+  );
+  const [selectedDistrict, setSelectedDistrict] = useState(
+    () => ss.get('mp_district') || localStorage.getItem('mp_district') || 'ADILABAD'
+  );
   const [mpConstituencyLocked, setMpConstituencyLocked] = useState(true);
   const [constituencyData, setConstituencyData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Save MP state/district to localStorage whenever they change
-  const handleStateChange = (s) => { setSelectedState(s); localStorage.setItem('mp_state', s); };
-  const handleDistrictChange = (d) => { setSelectedDistrict(d); localStorage.setItem('mp_district', d); };
+  // Persist state/district to both per-tab sessionStorage and cross-tab localStorage
+  const handleStateChange = (s) => {
+    setSelectedState(s);
+    ss.set('mp_state', s);
+    localStorage.setItem('mp_state', s);
+  };
+  const handleDistrictChange = (d) => {
+    setSelectedDistrict(d);
+    ss.set('mp_district', d);
+    localStorage.setItem('mp_district', d);
+  };
 
   const dName = selectedDistrict ? (selectedDistrict.charAt(0).toUpperCase() + selectedDistrict.slice(1).toLowerCase()) : 'Mandya';
 
@@ -2489,8 +2519,18 @@ export default function App() {
   const recognitionRef = useRef(null);
 
   // ── Effects ────────────────────────────────────────────────────
+
+  // Persist activeTab to sessionStorage every time it changes so F5 restores the right page
+  useEffect(() => { ss.set('activeTab', activeTab); }, [activeTab]);
+
+  // Persist portal to sessionStorage so F5 restores the portal too
+  useEffect(() => { if (selectedPortal) ss.set('portal', selectedPortal); }, [selectedPortal]);
+
+  // Only navigate to 'home' on first login in this tab (when no saved tab exists)
   useEffect(() => {
-    if (currentUser && selectedPortal) setActiveTab('home');
+    if (currentUser && selectedPortal && !ss.get('activeTab')) {
+      setActiveTab('home');
+    }
   }, [currentUser, selectedPortal]);
 
   useEffect(() => {
@@ -2558,16 +2598,29 @@ export default function App() {
           if (snap.exists()) {
             const p = snap.data();
             setCurrentUser(p);
-            if (p.role === 'Citizen') setSelectedPortal('citizen');
-            else if (p.role === 'MP') setSelectedPortal('official');
-            else if (p.role === 'Officer') setSelectedPortal('officer');
-            else if (p.role === 'Admin') setSelectedPortal('admin');
+            // Only set portal if this tab doesn't already have one saved
+            // (preserves the portal on F5 refresh for each independent tab)
+            if (!ss.get('portal')) {
+              if (p.role === 'Citizen') setSelectedPortal('citizen');
+              else if (p.role === 'MP') setSelectedPortal('official');
+              else if (p.role === 'Officer') setSelectedPortal('officer');
+              else if (p.role === 'Admin') setSelectedPortal('admin');
+            } else {
+              // Restore from sessionStorage (handles F5)
+              setSelectedPortal(ss.get('portal'));
+            }
           } else {
             setCurrentUser({ uid: user.uid, email: user.email, displayName: user.displayName || user.email.split('@')[0], role: 'Citizen' });
-            setSelectedPortal('citizen');
+            if (!ss.get('portal')) setSelectedPortal('citizen');
+            else setSelectedPortal(ss.get('portal'));
           }
         } catch (e) { console.error(e); }
-      } else setCurrentUser(null);
+      } else {
+        setCurrentUser(null);
+        // Clear this tab's session so next login starts fresh in this tab
+        ss.remove('portal');
+        ss.remove('activeTab');
+      }
       setAuthChecking(false);
     });
     return () => unsub();
