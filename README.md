@@ -273,4 +273,117 @@ Launch both frontend and backend concurrently using the root runner:
 cd backend
 python run.py
 ```
-* Note: The server automatically mounts built frontend static files from `frontend/dist` when packaged, but in dev mode, it runs hot-reloads on port `5173`.
+* Note: During local development, the backend runs the APIs on port `8000`, while the frontend uses Vite's hot-reload server on port `5173` (requests proxy automatically).
+
+---
+
+## 🚀 Production Deployment Guidelines
+
+In production, frontend compilation is treated as a **build-time step** rather than an application-startup step. This ensures that the FastAPI backend runs with zero dependency on Node.js at runtime, preventing crashes in serverless or containerized cloud platforms.
+
+If the frontend build (`frontend/dist`) is missing, the backend continues to start successfully, serving a styled diagnostic page for frontend routes instead of raising a `RuntimeError`.
+
+### 1. Render Deployment Config
+
+Configure your Render web service with these settings:
+* **Runtime**: `Python`
+* **Python Version**: `3.11.9`
+* **Build Command**:
+  ```bash
+  # Install Node.js locally inside the build environment (no root required)
+  mkdir -p $HOME/.node
+  curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz | tar -xJ --strip-components=1 -C $HOME/.node
+  export PATH=$HOME/.node/bin:$PATH
+
+  # Compile frontend
+  cd frontend
+  npm install
+  npm run build
+
+  # Compile backend
+  cd ../backend
+  pip install --upgrade pip
+  pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+  ```
+* **Start Command**: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+
+### 2. Railway Ingestion Config
+
+Railway uses Nixpacks to automatically detect project environments. Create a `nixpacks.toml` at the root of the project to tell Railway to setup both Node.js and Python for building:
+```toml
+[providers]
+providers = ["node", "python"]
+
+[phases.setup]
+nixPkgs = ["nodejs", "python311"]
+
+[phases.build]
+cmds = [
+  "cd frontend && npm install && npm run build",
+  "cd ../backend && pip install --upgrade pip && pip install -r requirements.txt"
+]
+```
+* **Start Command**: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+
+### 3. Docker Container Build
+
+Use this multi-stage Dockerfile to build the frontend and serve it using Python:
+```dockerfile
+# --- Stage 1: Build Frontend ---
+FROM node:18-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# --- Stage 2: Serve Backend ---
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt ./backend/
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r backend/requirements.txt
+
+COPY backend/ ./backend/
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+EXPOSE 8000
+ENV PORT=8000
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### 4. GitHub Actions CI/CD Pipeline
+
+Use this workflow snippet to validate frontend and backend compilation in your pull requests:
+```yaml
+name: Build and Validate
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Build Backend
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+```

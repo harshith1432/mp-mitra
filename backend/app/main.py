@@ -272,7 +272,6 @@ def startup_event():
 
 # Serve built frontend static assets with SPA routing fallback
 import sys
-import subprocess
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette.responses import Response
 
@@ -283,29 +282,10 @@ if getattr(sys, 'frozen', False):
 else:
     # Standard local environment path
     dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
-    frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 
-    # Auto-rebuild frontend if missing and running in development mode
-    if not os.path.exists(dist_path) or not os.path.exists(os.path.join(dist_path, "index.html")):
-        print("[Startup] Frontend build not found at: " + dist_path)
-        print("[Startup] Attempting to rebuild frontend...")
-        try:
-            subprocess.run(["npm", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, shell=True)
-            print("[Startup] Node.js/npm detected. Running 'npm install'...")
-            subprocess.run(["npm", "install"], cwd=frontend_dir, check=True, shell=True)
-            print("[Startup] Running 'npm run build'...")
-            subprocess.run(["npm", "run", "build"], cwd=frontend_dir, check=True, shell=True)
-            print("[Startup] Frontend rebuild completed successfully.")
-        except Exception as e:
-            print("[Startup ERROR] Failed to automatically build the frontend.")
-            print("[Startup DIAGNOSTIC] Please ensure Node.js is installed and run:")
-            print("    cd frontend")
-            print("    npm install")
-            print("    npm run build")
-            print(f"    Error detail: {e}")
-            raise RuntimeError("Frontend build missing and rebuild failed.") from e
+_frontend_built = os.path.exists(dist_path) and os.path.exists(os.path.join(dist_path, "index.html"))
 
-if os.path.exists(dist_path):
+if _frontend_built:
     # Mount assets folder explicitly
     assets_path = os.path.join(dist_path, "assets")
     if os.path.exists(assets_path):
@@ -337,15 +317,108 @@ if os.path.exists(dist_path):
             return FileResponse(index_path)
 
         return HTMLResponse(
-            content="<h1>Frontend build not found!</h1><p>Please compile the frontend dashboard by running <code>npm run build</code> in the frontend folder.</p>",
+            content="<h1>Frontend build index.html not found!</h1><p>Please compile the frontend dashboard by running <code>npm run build</code> in the frontend folder.</p>",
             status_code=404
         )
 else:
+    print("[Startup WARNING] Frontend build not found at: " + dist_path)
+    print("[Startup DIAGNOSTIC] Please compile the frontend dashboard by running:")
+    print("    cd frontend")
+    print("    npm install")
+    print("    npm run build")
+
+    # Beautiful diagnostic fallback page HTML content
+    DIAGNOSTIC_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Build Missing - MP MITRA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8FAFC;
+            color: #1E293B;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            max-width: 500px;
+            width: 100%;
+            border-top: 5px solid #FF6B1A;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: #003B7A;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #0F172A;
+        }
+        p {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #64748B;
+            margin-bottom: 24px;
+        }
+        .code-block {
+            background-color: #0F172A;
+            color: #38BDF8;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin-bottom: 24px;
+            white-space: pre-wrap;
+        }
+        .footer {
+            font-size: 12px;
+            color: #94A3B8;
+            border-top: 1px solid #E2E8F0;
+            padding-top: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">🇮🇳 MP MITRA</div>
+        <h1>Frontend Build Missing</h1>
+        <p>The backend server is running successfully, but the compiled frontend React app was not found in <code>frontend/dist</code>. Please compile the static files using the build command.</p>
+        <div class="code-block"># Run these commands to compile:
+cd frontend
+npm install
+npm run build</div>
+        <div class="footer">
+            National AI Governance Intelligence Platform
+        </div>
+    </div>
+</body>
+</html>"""
+
     @app.get("/{catchall:path}")
     async def serve_missing_error(catchall: str):
         if catchall.startswith("api/") or catchall.startswith("ws/"):
             return Response(content='{"detail":"Not Found"}', media_type="application/json", status_code=404)
         return HTMLResponse(
-            content="<h1>Frontend build not found!</h1><p>Please compile the frontend dashboard by running <code>npm run build</code> in the frontend folder.</p>",
+            content=DIAGNOSTIC_HTML,
             status_code=404
         )
