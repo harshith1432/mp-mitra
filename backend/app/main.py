@@ -23,9 +23,7 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the MP Mitra API Gateway!"}
+# Root route is handled below by the catch-all SPA handler
 
 
 # ─── WebSocket: Real-time crawler log stream ──────────────────────────────────
@@ -127,12 +125,15 @@ def startup_event():
     print("Database tables validated.")
     Base.metadata.create_all(bind=engine)
 
-    # Initialize / index RAG vector store in background
-    try:
-        from app.database.vector_store import rebuild_vector_store
-        rebuild_vector_store()
-    except Exception as e:
-        print(f"[Startup] Vector store rebuild failed to start: {e}")
+    # Initialize / index RAG vector store in background thread to keep startup fast
+    import threading
+    def bg_startup_vector():
+        try:
+            from app.database.vector_store import rebuild_vector_store
+            rebuild_vector_store()
+        except Exception as err:
+            print(f"[Startup] Vector store rebuild failed to start: {err}")
+    threading.Thread(target=bg_startup_vector, daemon=True).start()
 
     # Start background crawler thread (legacy continuous loop)
     import threading
@@ -175,8 +176,12 @@ def startup_event():
     crawler_thread = threading.Thread(target=run_crawler_loop, daemon=True)
     crawler_thread.start()
 
-# Serve built frontend static assets if dist exists (Production/Desktop bundle support)
+# Serve built frontend static assets with SPA routing fallback
 import sys
+import subprocess
+from fastapi.responses import FileResponse, HTMLResponse
+from starlette.responses import Response
+
 if getattr(sys, 'frozen', False):
     # PyInstaller bundle path
     bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
@@ -184,6 +189,69 @@ if getattr(sys, 'frozen', False):
 else:
     # Standard local environment path
     dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+    frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
+
+    # Auto-rebuild frontend if missing and running in development mode
+    if not os.path.exists(dist_path) or not os.path.exists(os.path.join(dist_path, "index.html")):
+        print("[Startup] Frontend build not found at: " + dist_path)
+        print("[Startup] Attempting to rebuild frontend...")
+        try:
+            subprocess.run(["npm", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, shell=True)
+            print("[Startup] Node.js/npm detected. Running 'npm install'...")
+            subprocess.run(["npm", "install"], cwd=frontend_dir, check=True, shell=True)
+            print("[Startup] Running 'npm run build'...")
+            subprocess.run(["npm", "run", "build"], cwd=frontend_dir, check=True, shell=True)
+            print("[Startup] Frontend rebuild completed successfully.")
+        except Exception as e:
+            print("[Startup ERROR] Failed to automatically build the frontend.")
+            print("[Startup DIAGNOSTIC] Please ensure Node.js is installed and run:")
+            print("    cd frontend")
+            print("    npm install")
+            print("    npm run build")
+            print(f"    Error detail: {e}")
+            raise RuntimeError("Frontend build missing and rebuild failed.") from e
 
 if os.path.exists(dist_path):
-    app.mount("/", StaticFiles(directory=dist_path, html=True), name="frontend")
+    # Mount assets folder explicitly
+    assets_path = os.path.join(dist_path, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+
+    # Explicit route for favicon.ico
+    @app.get("/favicon.ico", include_in_schema=False)
+    def get_favicon():
+        favicon_path = os.path.join(dist_path, "favicon.ico")
+        if os.path.exists(favicon_path):
+            return FileResponse(favicon_path)
+        return Response(status_code=404)
+
+    # Catch-all route for SPA router fallback (React Router history mode)
+    @app.get("/{catchall:path}")
+    async def serve_spa(catchall: str):
+        # Exclude API endpoints and WebSocket endpoints
+        if catchall.startswith("api/") or catchall.startswith("ws/"):
+            return Response(content='{"detail":"Not Found"}', media_type="application/json", status_code=404)
+
+        # Check if the requested file exists in dist_path
+        file_path = os.path.join(dist_path, catchall)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+
+        # Otherwise serve React's index.html
+        index_path = os.path.join(dist_path, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+
+        return HTMLResponse(
+            content="<h1>Frontend build not found!</h1><p>Please compile the frontend dashboard by running <code>npm run build</code> in the frontend folder.</p>",
+            status_code=404
+        )
+else:
+    @app.get("/{catchall:path}")
+    async def serve_missing_error(catchall: str):
+        if catchall.startswith("api/") or catchall.startswith("ws/"):
+            return Response(content='{"detail":"Not Found"}', media_type="application/json", status_code=404)
+        return HTMLResponse(
+            content="<h1>Frontend build not found!</h1><p>Please compile the frontend dashboard by running <code>npm run build</code> in the frontend folder.</p>",
+            status_code=404
+        )

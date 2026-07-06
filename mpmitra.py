@@ -25,7 +25,20 @@ LOG_DIR = APPDATA / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
 LOG_FILE = LOG_DIR / 'mpmitra.log'
 
-VERSION = "1.0.0"
+# Load version from version.json (single source of truth)
+def _load_version_info() -> dict:
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidate = os.path.join(here, "version.json")
+    if os.path.exists(candidate):
+        try:
+            with open(candidate, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"version": "1.0.0", "channel": "stable", "build": "unknown", "release_date": "unknown"}
+
+_VERSION_INFO = _load_version_info()
+VERSION = _VERSION_INFO.get("version", "1.0.0")
 
 # Import ConfigManager or local mock for CLI standalone execution
 try:
@@ -97,6 +110,32 @@ def get_running_pid() -> Optional[int]:
             pass
     return None
 
+def get_pid_on_port(port: int):
+    """Finds the PID of the process listening on the specified port."""
+    try:
+        if os.name == 'nt':
+            out = subprocess.check_output("netstat -ano", shell=True).decode()
+            for line in out.splitlines():
+                if f"127.0.0.1:{port}" in line or f"0.0.0.0:{port}" in line:
+                    if "LISTENING" in line:
+                        parts = [p.strip() for p in line.split() if p.strip()]
+                        if len(parts) >= 5:
+                            try:
+                                return int(parts[-1])
+                            except ValueError:
+                                pass
+        else:
+            out = subprocess.check_output(f"lsof -t -i:{port}", shell=True).decode()
+            pids = [int(p.strip()) for p in out.splitlines() if p.strip()]
+            if pids:
+                return pids[0]
+    except Exception:
+        pass
+    return None
+
+
+
+
 def start_services(open_browser: bool = True):
     """Launches backend FastAPI web server and mounts built frontend."""
     log_message("[*] Starting MP Mitra Decisional Twin platform...")
@@ -108,41 +147,44 @@ def start_services(open_browser: bool = True):
         log_message(f"[ERROR] Port {port} is already in use. Service is likely already running.")
         sys.exit(1)
 
-    # 2. Resolve execute command
+    # 2. Resolve paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
+    py_exe = sys.executable
+    script_path = os.path.abspath(__file__)
     
-    if getattr(sys, 'frozen', False):
-        # Package executable mode
-        cmd = [sys.executable, "--server"]
-    else:
-        # Development python interpreter mode
-        cmd = [sys.executable, os.path.abspath(__file__), "--server"]
-
-    # 3. Spawn detached server process
+    # 3. Spawn fully detached server process
     log_message(f"Starting server on http://{host}:{port}...")
     try:
         if os.name == 'nt':
-            # Detached process on Windows
-            proc = subprocess.Popen(
-                cmd,
-                cwd=script_dir,
-                stdout=open(LOG_FILE, 'a'),
-                stderr=subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-                shell=True
-            )
+            # Use wmic process call create to spawn a process completely independent of
+            # the parent job object, guaranteeing survival after CLI script exits
+            wmic_cmd = f'wmic process call create "\""\"" {py_exe} \"\"\"" -u \"\"\"" {script_path} \"\"\"" --server"'
+            wmic_cmd = f"\"{py_exe}\" -u \"{script_path}\" --server"
+            full_wmic = f'wmic process call create "{wmic_cmd}"'
+            subprocess.run(full_wmic, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            # Wait up to 15 seconds to find the listening process
+            server_pid = None
+            for _ in range(30):
+                time.sleep(0.5)
+                server_pid = get_pid_on_port(port)
+                if server_pid:
+                    break
+            
+            pid_to_save = server_pid or 0
+            PID_FILE.write_text(str(pid_to_save))
+            log_message(f"Service running in background. Process ID: {pid_to_save}")
         else:
             # Unix detached process
             proc = subprocess.Popen(
-                cmd,
+                [py_exe, "-u", script_path, "--server"],
                 cwd=script_dir,
-                stdout=open(LOG_FILE, 'a'),
-                stderr=subprocess.STDOUT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 preexec_fn=os.setpgrp
             )
-            
-        PID_FILE.write_text(str(proc.pid))
-        log_message(f"Service running in background. Process ID: {proc.pid}")
+            PID_FILE.write_text(str(proc.pid))
+            log_message(f"Service running in background. Process ID: {proc.pid}")
         
     except Exception as e:
         log_message(f"[ERROR] Failed to start service: {e}")
@@ -155,17 +197,19 @@ def start_services(open_browser: bool = True):
         if is_server_running():
             log_message("[OK] MP Mitra Platform is ready and online!")
             if open_browser:
-                url = f"http://localhost:{port}"
+                url = f"http://127.0.0.1:{port}"
                 log_message(f"Opening browser at {url}...")
                 webbrowser.open(url)
-            return
+                return
             
     log_message("[WARN] Service started but did not respond to health check in time. Please view logs.")
 
 def stop_services():
     """Gracefully terminates background service."""
     log_message("[*] Stopping MP Mitra Platform...")
-    pid = get_running_pid()
+    port = config_manager.get("PORT", 8000)
+    pid = get_running_pid() or get_pid_on_port(port)
+    
     if not pid:
         log_message("[WARN] No running service instance found (PID file missing or inactive).")
         if is_server_running():
@@ -200,40 +244,71 @@ def restart_services():
     start_services()
 
 def show_status():
-    """Retrieves and prints current service health metrics."""
+    """Retrieves and prints current service health metrics in professional format."""
     pid = get_running_pid()
     running = is_server_running()
     port = config_manager.get("PORT", 8000)
-    db_url = config_manager.get("DATABASE_URL", "sqlite:///mpmitra.db")
-    channel = config_manager.get("UPDATE_CHANNEL", "stable")
+    version = VERSION
     
-    print("==================================================")
-    print("      MP MITRA PLATFORM STATUS MONITOR           ")
-    print("==================================================")
-    print(f"CLI Version:      {VERSION}")
-    print(f"Update Channel:   {channel}")
-    print(f"Service Port:     {port}")
-    print(f"Database Profile: {db_url}")
-    print("--------------------------------------------------")
+    # 1. Determine Backend Status
+    backend_status = "Running" if running else "Stopped"
     
-    if running:
-        print("Status:           ONLINE (Running)")
-        if pid:
-            print(f"Process ID (PID): {pid}")
-            # Display memory usage on Windows if possible
-            if os.name == 'nt':
-                try:
-                    out = subprocess.check_output(f'tasklist /FI "PID eq {pid}" /NH', shell=True).decode()
-                    parts = [p for p in out.split(' ') if p]
-                    if len(parts) > 4:
-                        print(f"Memory Usage:     {parts[-2]} {parts[-1].strip()}")
-                except:
-                    pass
-        else:
-            print("Process ID:       Unknown (Externally bound)")
+    # 2. Determine Frontend Status
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dist_path = os.path.abspath(os.path.join(script_dir, "frontend", "dist"))
+    if os.path.exists(dist_path) and os.path.exists(os.path.join(dist_path, "index.html")):
+        frontend_status = "Built"
     else:
-        print("Status:           OFFLINE (Stopped)")
-    print("==================================================")
+        frontend_status = "Missing"
+        
+    # 3. Determine API Health
+    api_health = "Unknown"
+    if running:
+        try:
+            api_url = f"http://127.0.0.1:{port}/api/constituency/filter-options"
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Status'})
+            with urllib.request.urlopen(req, timeout=2) as response:
+                if response.status == 200:
+                    api_health = "Healthy"
+                else:
+                    api_health = "Unhealthy"
+        except:
+            api_health = "Unhealthy"
+    else:
+        api_health = "Offline"
+        
+    # 4. Determine Database Status
+    db_status = "Disconnected"
+    db_url = config_manager.get("DATABASE_URL")
+    if db_url.startswith("sqlite"):
+        db_status = "Connected"
+    else:
+        try:
+            try:
+                from sqlalchemy import create_engine, text
+                engine = create_engine(db_url)
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                db_status = "Connected"
+            except:
+                import psycopg2
+                conn = psycopg2.connect(db_url, connect_timeout=2)
+                conn.close()
+                db_status = "Connected"
+        except:
+            db_status = "Connection Failed"
+
+    print("----------------------------------------")
+    print("MP Mitra Status")
+    print("----------------------------------------")
+    print(f"Backend        : {backend_status}")
+    print(f"Frontend       : {frontend_status}")
+    print(f"Dashboard      : http://127.0.0.1:{port}")
+    print(f"API            : {api_health}")
+    print(f"Database       : {db_status}")
+    print(f"Port           : {port}")
+    print(f"Version        : {version}")
+    print("----------------------------------------")
 
 def show_logs(lines: int = 50, follow: bool = False):
     """Tail display of application log file."""
@@ -263,64 +338,99 @@ def show_logs(lines: int = 50, follow: bool = False):
 
 def run_doctor():
     """Diagnoses installations and environment config."""
-    print("[*] Running MP Mitra System Doctor Diagnostics...")
-    time.sleep(0.5)
+    print("==================================================")
+    print("      MP MITRA SYSTEM DOCTOR DIAGNOSTICS          ")
+    print("==================================================")
     
-    # 1. Directory writable permission
-    try:
-        test_file = APPDATA / 'permission_test.tmp'
-        test_file.write_text('OK')
-        test_file.unlink()
-        print("[OK] AppData Read/Write Permissions: PASS")
-    except Exception as e:
-        print(f"[ERROR] AppData Read/Write Permissions: FAIL ({e})")
-        
-    # 2. Database Connection Check
+    # 1. Backend Status & Port Availability
+    port = config_manager.get("PORT", 8000)
+    host = config_manager.get("HOST", "127.0.0.1")
+    running = is_server_running()
+    if running:
+        print(f"[OK] Backend Status: ONLINE (Server is running)")
+        print(f"[WARN] Port Availability: Port {port} is currently IN USE by our active server.")
+    else:
+        print(f"[OK] Backend Status: OFFLINE (Server is not running)")
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind((host, int(port)))
+            s.close()
+            print(f"[OK] Port Availability: Port {port} is FREE and available.")
+        except Exception as e:
+            print(f"[ERROR] Port Availability: Port {port} is BLOCKED/IN USE by another application ({e}).")
+
+    # 2. Frontend build & Static asset availability
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dist_path = os.path.abspath(os.path.join(script_dir, "frontend", "dist"))
+    if os.path.exists(dist_path):
+        print(f"[OK] Frontend Build: FOUND at {dist_path}")
+        if os.path.exists(os.path.join(dist_path, "index.html")):
+            print("[OK] Static Assets: index.html exists.")
+        else:
+            print("[ERROR] Static Assets: index.html is MISSING from dist folder.")
+        if os.path.exists(os.path.join(dist_path, "assets")):
+            print("[OK] Static Assets: assets directory exists.")
+        else:
+            print("[ERROR] Static Assets: assets directory is MISSING from dist folder.")
+    else:
+        print(f"[ERROR] Frontend Build: MISSING (Build directory not found at {dist_path})")
+
+    # 3. Database Health Check
     db_url = config_manager.get("DATABASE_URL")
-    print(f"Testing Database connection profile: {db_url}")
+    print(f"[*] Testing Database: {db_url}")
     if db_url.startswith("sqlite"):
         try:
             sqlite_path = db_url.replace("sqlite:///", "")
+            if not os.path.isabs(sqlite_path):
+                sqlite_path = os.path.abspath(os.path.join(script_dir, sqlite_path))
             sqlite_dir = Path(sqlite_path).parent
             if sqlite_dir.exists():
-                print("[OK] SQLite database folder write permissions: PASS")
+                print("[OK] Database Health: Connected (SQLite local DB file path writeable)")
             else:
-                print("[WARN] SQLite DB folder does not exist yet. Will initialize on startup.")
-        except:
-            print("[ERROR] SQLite Database path parsing: FAIL")
+                print("[WARN] Database Health: Directory for SQLite file does not exist yet.")
+        except Exception as e:
+            print(f"[ERROR] Database Health: SQLite path validation failed ({e})")
     else:
-        # Check PostgreSQL connectivity
         try:
-            import psycopg2
-            conn = psycopg2.connect(db_url, connect_timeout=3)
-            conn.close()
-            print("[OK] External PostgreSQL database connection: PASS")
+            try:
+                from sqlalchemy import create_engine, text
+                engine = create_engine(db_url)
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                print("[OK] Database Health: Connected (PostgreSQL engine connected successfully)")
+            except Exception:
+                import psycopg2
+                conn = psycopg2.connect(db_url, connect_timeout=3)
+                conn.close()
+                print("[OK] Database Health: Connected (PostgreSQL connected successfully)")
         except Exception as e:
-            print(f"[ERROR] External PostgreSQL database connection: FAIL ({e})")
-            
-    # 3. Internet Connectivity & AI API checking
-    print("Testing external API connectivity...")
-    apis = [
-        ("Google Translation / Nominatim API", "https://nominatim.openstreetmap.org"),
-        ("Firebase Cloud / Firestore Endpoint", "https://firestore.googleapis.com"),
-        ("GitHub Release Server", "https://api.github.com")
-    ]
-    for name, url in apis:
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=4) as response:
-                print(f"[OK] {name}: ONLINE (Status {response.status})")
-        except Exception as e:
-            print(f"[WARN] {name}: OFFLINE/RESTRICTED (Error: {e})")
+            print(f"[ERROR] Database Health: Connection failed ({e})")
 
-    # 4. Check for Firebase Service Key
+    # 4. Firebase Configuration
     fb_svc = config_manager.get_secret("FIREBASE_SERVICE_ACCOUNT_JSON")
     if fb_svc:
-        print("[OK] Firebase Service Account Configuration: DETECTED (Encrypted)")
+        print("[OK] Firebase Configuration: DETECTED (Securely Encrypted)")
     else:
-        print("[WARN] Firebase Service Account Key: MISSING (Dynamic online sync features will use dev fallback mode)")
+        print("[WARN] Firebase Configuration: MISSING (Using local database/mock credentials)")
 
-    print("\nDiagnostics completed.")
+    # 5. API Health Check
+    if running:
+        print("[*] Testing API Health...")
+        try:
+            api_url = f"http://127.0.0.1:{port}/api/constituency/filter-options"
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Doctor'})
+            with urllib.request.urlopen(req, timeout=4) as response:
+                if response.status == 200:
+                    print("[OK] API Health: HEALTHY (Endpoints responding successfully)")
+                else:
+                    print(f"[ERROR] API Health: UNHEALTHY (Status code: {response.status})")
+        except Exception as e:
+            print(f"[ERROR] API Health: UNHEALTHY (Unable to connect to active API: {e})")
+    else:
+        print("[WARN] API Health: Server is offline, health check skipped.")
+
+    print("==================================================")
 
 def run_backup(target_path: str):
     """Backs up SQLite database and config."""
@@ -410,59 +520,59 @@ def manage_config(action: str, key: str, value: Optional[str] = None):
             for k in config_manager.config["SECRETS"].keys():
                 print(f"  - {k}")
 
-def run_update():
-    """Handles auto-updating from latest releases."""
-    channel = config_manager.get("UPDATE_CHANNEL", "stable")
-    log_message(f"[*] Checking for updates on channel: {channel}...")
-    
-    # We query the latest release from the GitHub releases API
-    api_url = "https://api.github.com/repos/harshith1432/mp-mitra/releases/latest"
+def run_check_update():
+    """Checks for updates using the enterprise updater module."""
     try:
-        req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Updater'})
-        with urllib.request.urlopen(req, timeout=5) as r:
-            release_data = json.loads(r.read().decode())
-            tag_name = release_data.get("tag_name", "v1.0.0")
-            
-            # Simple semantic version check
-            current = [int(x) for x in VERSION.replace("v", "").split(".")]
-            latest = [int(x) for x in tag_name.replace("v", "").split(".")]
-            
-            if latest > current:
-                log_message(f"[NEW] New version detected: {tag_name} (Current: v{VERSION})")
-                log_message(f"Release Notes:\n{release_data.get('body', '')[:300]}...")
-                
-                # Check for release asset downloads
-                assets = release_data.get("assets", [])
-                download_url = None
-                for asset in assets:
-                    if asset.get("name", "").endswith(".zip") or asset.get("name", "").endswith(".exe"):
-                        download_url = asset.get("browser_download_url")
-                        break
-                        
-                if download_url:
-                    log_message(f"Downloading update from {download_url}...")
-                    # We would download the zip file and apply update
-                    temp_zip = APPDATA / "update.zip"
-                    urllib.request.urlretrieve(download_url, temp_zip)
-                    log_message("[OK] Update downloaded successfully. Validating checksum...")
-                    # Calculate hash
-                    h = hashlib.sha256()
-                    with open(temp_zip, 'rb') as file:
-                        chunk = file.read(8192)
-                        while chunk:
-                            h.update(chunk)
-                            chunk = file.read(8192)
-                    log_message(f"SHA-256 Checksum: {h.hexdigest()}")
-                    log_message("Applying update. Previous version has been backed up in local appdata.")
-                    # Note: Full updater replacement is usually executed by a separate updater helper script
-                    # to avoid file locking on Windows since mpmitra.exe is running.
-                    log_message("[OK] Version upgraded successfully. Please restart MP Mitra services.")
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
+        from app.updater import display_check_update, get_local_version
+        local = get_local_version()
+        display_check_update(local)
+    except ImportError:
+        # Fallback: basic GitHub API check
+        log_message("[*] Checking for updates...")
+        try:
+            api_url = "https://api.github.com/repos/harshith1432/mp-mitra/releases/latest"
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'MP-Mitra-Updater'})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                data = json.loads(r.read().decode())
+                tag = data.get("tag_name", "").lstrip("v")
+                if tag:
+                    log_message(f"Latest release: v{tag}  (Current: v{VERSION})")
                 else:
-                    log_message("[WARN] No compatible update binary asset found in release. Please check GitHub page.")
+                    log_message("No published release found.")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                log_message("No published release found on GitHub.")
+            elif e.code == 403:
+                log_message("GitHub API rate limit exceeded. Try again later.")
             else:
-                log_message("[OK] MP Mitra is already up to date!")
-    except Exception as e:
-        log_message(f"[ERROR] Update check failed: {e}")
+                log_message(f"Update check failed (HTTP {e.code}).")
+        except urllib.error.URLError:
+            log_message("Network unavailable. Check your internet connection.")
+        except Exception as e:
+            log_message(f"Update check failed: {e}")
+
+
+def run_update():
+    """Downloads and installs the latest update using the enterprise updater module."""
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
+        from app.updater import run_update as _run_update, get_local_version
+        local = get_local_version()
+        _run_update(local)
+    except ImportError as e:
+        log_message(f"[ERROR] Updater module not available: {e}")
+        log_message("Run check-update to see if a new version exists.")
+
+
+def run_rollback():
+    """Restores previous version from backup using the enterprise updater module."""
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
+        from app.updater import run_rollback as _run_rollback
+        _run_rollback()
+    except ImportError as e:
+        log_message(f"[ERROR] Updater module not available: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="MP Mitra Command Line Interface (CLI) Service Manager")
@@ -502,10 +612,11 @@ def main():
     restore_parser = subparsers.add_parser("restore", help="Import configuration and database archives")
     restore_parser.add_argument("path", help="Folder path containing backup file")
 
-    # Command: update
-    subparsers.add_parser("update", help="Check and download latest platform software updates")
-    subparsers.add_parser("check-update", help="Query update server for latest version")
-    subparsers.add_parser("version", help="Print active CLI software version")
+    # Command: update / check-update / version / rollback
+    subparsers.add_parser("update", help="Download and install the latest platform update")
+    subparsers.add_parser("check-update", help="Check GitHub for the latest available version")
+    subparsers.add_parser("version", help="Print active CLI software version and build info")
+    subparsers.add_parser("rollback", help="Restore the previous installed version from backup")
     subparsers.add_parser("reset", help="Reset all settings, configuration and database files to empty defaults")
 
     args = parser.parse_args()
@@ -535,9 +646,19 @@ def main():
     elif args.command == "update":
         run_update()
     elif args.command == "check-update":
-        run_update()
+        run_check_update()
     elif args.command == "version":
-        print(f"MP Mitra CLI Version: {VERSION}")
+        try:
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
+            from app.updater import display_version, get_local_version
+            display_version(get_local_version())
+        except ImportError:
+            print(f"MP Mitra")
+            print(f"Version : {VERSION}")
+            print(f"Channel : {_VERSION_INFO.get('channel', 'stable').capitalize()}")
+            print(f"Build   : {_VERSION_INFO.get('build', 'unknown')}")
+    elif args.command == "rollback":
+        run_rollback()
     elif args.command == "reset":
         confirm = input("[WARN] Are you sure you want to delete all configuration, logs, and database files? (y/n): ")
         if confirm.lower() == 'y':

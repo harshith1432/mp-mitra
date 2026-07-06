@@ -75,6 +75,22 @@ try {
     Pop-Location
 }
 
+# Verify compiled frontend assets
+$DistPath = "$RepoPath\frontend\dist"
+if (-not (Test-Path $DistPath)) {
+    Write-Error "❌ Error: frontend/dist directory does not exist after build."
+    exit 1
+}
+if (-not (Test-Path "$DistPath\index.html")) {
+    Write-Error "❌ Error: frontend/dist/index.html is missing."
+    exit 1
+}
+if (-not (Test-Path "$DistPath\assets")) {
+    Write-Error "❌ Error: frontend/dist/assets folder is missing."
+    exit 1
+}
+Write-Host "✅ Verification: frontend/dist, index.html, and assets folder all exist!" -ForegroundColor Green
+
 # 6. Create CLI Batch Wrapper Command
 Write-Host "[*] Registering CLI wrapper command..." -ForegroundColor Yellow
 $WrapperPath = "$BinDir\mpmitra.cmd"
