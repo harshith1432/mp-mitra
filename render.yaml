@@ -8,14 +8,13 @@ services:
       mkdir -p $HOME/.node &&
       curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz | tar -xJ --strip-components=1 -C $HOME/.node &&
       export PATH=$HOME/.node/bin:$PATH &&
-      cd ../frontend &&
+      cd frontend &&
       npm install &&
       npm run build &&
       cd ../backend &&
       pip install --upgrade pip &&
       pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    rootDir: backend
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
