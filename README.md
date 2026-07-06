@@ -164,6 +164,98 @@ MP Mitra features a complete localization switcher on every screen, allowing bot
 
 ---
 
+## 🌐 Real-Time Crawler & Offline Data Unification Architecture
+
+This architecture details how the real-time web crawler, offline government databases, RAG retrieval system, and Firebase synchronizer merge to power the MP MITRA digital twin, dashboard, and geospatial map interfaces.
+
+### 🗺️ System Architecture Flowchart
+
+```mermaid
+graph TD
+    %% Scraped Web Data Sources
+    subgraph Web_Scraper [Real-Time Web Scraper]
+        RSS[Google News RSS Feed]
+        TND[Scraped Government Tenders]
+        SCH[myscheme.gov.in RSS/Webpages]
+    end
+
+    %% Offline Datasets
+    subgraph Offline_Data [Physical Datasets]
+        UDISE[UDISE School Demographics]
+        JJM[Jal Jeevan Mission Habitations]
+        PMGSY[PMGSY Road Construction]
+        WQ[Water Quality Database]
+    end
+
+    %% Storage & Search Engines
+    subgraph Storage [Databases & Intelligence Store]
+        PG[(PostgreSQL / SQLite Database)]
+        FB[(Firebase Firestore & RTDB)]
+        VS[(ChromaDB Vector Store)]
+    end
+
+    %% Backend Services
+    subgraph Backend [FastAPI API Routers]
+        CR[crawler_rt_stages.py / crawler_manager.py]
+        CO[copilot.py - Conversational Agent]
+        RA[rag_agent.py - RAG Search Engine]
+        RE[recommendations.py - Priority Engine]
+        GE[geo.py - Geospatial API Router]
+    end
+
+    %% Frontend App
+    subgraph Client [React Digital Twin Interface]
+        DB_WDG[Dashboard Widgets: Health Score, Gaps, Risk Alerts]
+        LF_MAP[Leaflet Geospatial Map Interface]
+        CO_AI[MP Copilot Chat Interface]
+    end
+
+    %% Data Connections
+    RSS -->|Parse articles| CR
+    TND -->|Parse tenders| CR
+    SCH -->|Parse schemes| CR
+    CR -->|Store crawled_news/tenders/schemes| PG
+    CR -->|Sync alerts| FB
+
+    UDISE -->|Bulk import| PG
+    JJM -->|Bulk import| PG
+    PMGSY -->|Bulk import| PG
+    WQ -->|Bulk import| PG
+
+    PG -->|Feed text items| VS
+    
+    %% API Services
+    PG -->|Read infrastructure details| RE
+    FB -->|Read citizen complaints| RE
+    RE -->|Calculate composite priorities| GE
+    
+    GE -->|Heatmap data & AI recommended pins| LF_MAP
+    GE -->|/expand-intelligence POST RAG Rerank| RA
+    RA -->|Vector search| VS
+    RA -->|Direct text fallback lookup| PG
+    
+    PG -->|Read constituency counts| Backend
+    Backend -->|/api/constituency/data| DB_WDG
+    
+    CO -->|Natural Language Conversational RAG| CO_AI
+```
+
+### 🔍 Core Data Unification Details
+
+#### 1. Real-time Aggregation
+- **Web Crawler**: Scrapes news articles, local tenders, and schemes in real-time, matching them to specific Gram Panchayats, Villages, and Taluks.
+- **Offline Datasets**: Loaded from public census, education (UDISE), health (NHM), water (JJM), and roads (PMGSY) data, georeferenced by Taluk/Block.
+
+#### 2. Algorithmic Merging
+- **Constituency Health Score**: 
+  \[
+  \text{Health Score} = \text{PTR Score} + \text{Clinic Coverage} + \text{Water Coverage} + \text{Road Completion} - \text{Active Crawled Alerts Penalty}
+  \]
+- **AI Recommendation Engine**: Scans physical deficit datasets, clusters them with citizen suggestions, and generates recommended pins for the Leaflet map sidebar dynamically.
+- **Expand Intelligence RAG Hub**: Takes any map deficit location, queries ChromaDB embeddings for web-scraped context, and calls the LLM orchestrator to explain scheme fits, causes, and projected benefits.
+
+---
+
 ## ⚙️ Ingestion & Setup (Development Mode)
 
 ### 1. Environment Variables
