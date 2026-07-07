@@ -314,3 +314,42 @@ After the citizen types **DONE**, the AI instantly analyzes the complaint, match
 Knapsack Integer Linear Programming optimizer for the MPLADS ₹5 crore annual allocation. Set citizen demand weight, infrastructure gap weight, and budget limit — the solver generates the optimal project portfolio with village-level cost breakdown and total beneficiary count.
 
 ![Budget Optimizer](docs/screenshots/screenshot_budget_optimizer.png)
+
+---
+
+### 🌐 Digital Twin — Live Multi-Layer Intelligence Model
+Constituency Digital Twin for Mandya, Karnataka showing **1.40 Lakh population**, **312 villages**, **43 Gram Panchayats**, **59% PMGSY road coverage**, **73% JJM water coverage**. Sector Health Index benchmarks Healthcare (29/100), Education (85/100), Water Supply (73/100), Road Connectivity (59/100). Active Project Pipeline shows real construction/tender status.
+
+![Digital Twin](docs/screenshots/screenshot_digital_twin.png)
+
+---
+
+### 🏛️ Constituency Intelligence Dashboard
+Live overview dashboard for Mandya MP with **Health Score 76/100**, **3 AI Deficits Today** (1 School / 0 Clinic / 0 Scraped), **6 Active Complaints** (0 WhatsApp + 6 Web), **23 Completed Projects** (out of 30 Road Projects), **9 Risk Alerts** (3 High Urgency + 6 Water + 0 News). Includes Ask AI Decision Advisor for instant evidence-based investment recommendations.
+
+![Constituency Dashboard](docs/screenshots/screenshot_constituency_dashboard.png)
+
+---
+
+### 🚨 Live Citizen Feed & Active Risk Alerts
+Real-time citizen grievance feed from Web Kiosk and WhatsApp channels showing village-level complaints with timestamps, categories, and urgency. Risk Alert panel shows **Water Contamination Alert (Critical)** plus high-priority complaints from Katteri village (water pipes, hospitals, healthcare).
+
+![Citizen Feed and Risk Alerts](docs/screenshots/screenshot_citizen_feed_alerts.png)
+
+---
+
+### 🏥 Function Level — Sector Gap Analysis
+Drill-down into any sector (Water Supply / Primary Education / Primary Healthcare / Road Connectivity / Digital Connectivity). Healthcare view shows **Functional Health 71/100** (Moderate Gaps), **10 total health facilities**, **0.71 clinics per 10K** (vs WHO minimum 2.0), **6 rural sub-centres active**. AI Priority Directives recommend upgrading Mandya Rural PHC to CHC for ₹1.8 Crores impacting 12,000 citizens.
+
+![Function Level Healthcare](docs/screenshots/screenshot_function_level_healthcare.png)
+
+---
+
+### 📰 News & Alert Intelligence Feed
+Real-time monitoring of local news portals and district updates. Web crawler scrapes Deccan Herald and district portals for Mandya-specific news — **pothole-ridden highway causing 3km traffic congestion**, **broken water pipeline disrupting water supply** — automatically categorized as Roads & Transport / Drinking Water and plotted on the AI Priority Map.
+
+![News Intelligence Feed](docs/screenshots/screenshot_news_intelligence_feed.png)
+
+---
+
+> **Total: 11 real screenshots** — every feature from citizen complaint submission to AI-driven parliamentary decision-making.
