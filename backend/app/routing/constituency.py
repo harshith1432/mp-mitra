@@ -806,3 +806,17 @@ def get_clinic_list(state: str, district: str, type: str = None, db: Session = D
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.get("/all-states-districts")
+def get_all_states_districts():
+    try:
+        from app.database.crawler_service import INDIA_STATES_DISTRICTS
+        # Return simple map of state -> list of districts
+        result = {}
+        for state, info in INDIA_STATES_DISTRICTS.items():
+            result[state] = info.get("districts", [])
+        return {"states_districts": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+

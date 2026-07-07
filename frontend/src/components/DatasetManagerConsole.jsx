@@ -8,6 +8,14 @@ export default function DatasetManagerConsole() {
   const [updating, setUpdating] = useState(false);
   const [editingConfig, setEditingConfig] = useState(false);
   
+  // District Sync state
+  const [allStatesDistricts, setAllStatesDistricts] = useState({});
+  const [selectedState, setSelectedState] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncLogs, setSyncLogs] = useState([]);
+  const [syncCounts, setSyncCounts] = useState(null);
+
   // Form state
   const [provider, setProvider] = useState('default');
   const [providerUrl, setProviderUrl] = useState('');
@@ -38,6 +46,19 @@ export default function DatasetManagerConsole() {
 
   useEffect(() => {
     refreshData();
+    // Fetch all states/districts catalog for sync
+    const fetchCatalog = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/constituency/all-states-districts`);
+        if (res.ok) {
+          const json = await res.json();
+          setAllStatesDistricts(json.states_districts || {});
+        }
+      } catch (err) {
+        console.error("Failed to fetch states districts catalog:", err);
+      }
+    };
+    fetchCatalog();
   }, []);
 
   // Poll progress when downloading
@@ -425,6 +446,106 @@ export default function DatasetManagerConsole() {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* DISTRICT ON-DEMAND SYNC ENGINE */}
+      <div className="gov-card" style={{ padding: '24px', marginTop: '24px', border: '1px solid #DDE1E7', borderRadius: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#003B7A', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Database size={18} /> Direct District Ingestion Engine (All-India)
+        </h3>
+        <p style={{ fontSize: '13px', color: '#6B6B6B', marginBottom: '20px' }}>
+          Select any State and District in India to parse, filter, and import local records on the fly from the downloaded master CSV datasets.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '16px', alignItems: 'end', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '220px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#4A5568' }}>Select State</label>
+            <select 
+              value={selectedState} 
+              onChange={e => { setSelectedState(e.target.value); setSelectedDistrict(''); }}
+              className="gov-input"
+              style={{ width: '100%', padding: '9px 12px', fontSize: '13px' }}
+            >
+              <option value="">-- Choose State --</option>
+              {Object.keys(allStatesDistricts).sort().map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '220px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#4A5568' }}>Select District</label>
+            <select 
+              value={selectedDistrict} 
+              onChange={e => setSelectedDistrict(e.target.value)}
+              disabled={!selectedState}
+              className="gov-input"
+              style={{ width: '100%', padding: '9px 12px', fontSize: '13px' }}
+            >
+              <option value="">-- Choose District --</option>
+              {selectedState && allStatesDistricts[selectedState] && allStatesDistricts[selectedState].sort().map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+
+          <button 
+            onClick={async () => {
+              if (!selectedState || !selectedDistrict) {
+                alert("Please select both state and district!");
+                return;
+              }
+              setSyncing(true);
+              setSyncLogs(["Initializing sync pipeline..."]);
+              setSyncCounts(null);
+              try {
+                const response = await fetch(`${API_BASE}/api/admin/sync-district`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ state: selectedState, district: selectedDistrict })
+                });
+                const json = await response.json();
+                if (response.ok) {
+                  setSyncLogs(json.logs || [json.message]);
+                  setSyncCounts(json.counts);
+                } else {
+                  setSyncLogs([`Error: ${json.detail || 'Failed to sync district'}`]);
+                }
+              } catch (err) {
+                setSyncLogs([`Connection Error: ${err.message}`]);
+              } finally {
+                setSyncing(false);
+              }
+            }}
+            disabled={syncing || !selectedDistrict}
+            className="gov-btn gov-btn--saffron"
+            style={{ padding: '10px 20px', fontSize: '13px', fontWeight: 700, borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: syncing || !selectedDistrict ? 0.6 : 1 }}
+          >
+            {syncing ? <RefreshCw className="animate-spin" size={14} /> : <Play size={14} />} Ingest & Sync District
+          </button>
+        </div>
+
+        {/* SYNC OPERATION LOGS DISPLAY */}
+        {(syncLogs.length > 0 || syncing) && (
+          <div style={{ marginTop: '16px', background: '#1e1e1e', borderRadius: '8px', padding: '16px', fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#4af626', maxHeight: '200px', overflowY: 'auto' }}>
+            {syncLogs.map((log, idx) => (
+              <div key={idx} style={{ marginBottom: '4px' }}>&gt; {log}</div>
+            ))}
+            {syncing && <div style={{ color: '#ebc034' }}>&gt; Processing records (this may take a few seconds)...</div>}
+          </div>
+        )}
+
+        {/* SYNC COUNTS STATS GRID */}
+        {syncCounts && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', marginTop: '16px' }}>
+            {Object.entries(syncCounts).map(([key, val]) => (
+              <div key={key} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '10px', borderRadius: '6px', textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: '#718096' }}>{key.replace('_', ' ')}</div>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: '#003B7A', marginTop: '4px' }}>+{val}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
     </div>

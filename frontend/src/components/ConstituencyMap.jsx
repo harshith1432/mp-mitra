@@ -28,7 +28,7 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
   
   const [points, setPoints] = useState([]);
   const [selectedPoint, setSelectedPoint] = useState(null);
-  const [mapType, setMapType] = useState('voyager'); // 'voyager' | 'satellite' | 'terrain'
+  const [mapType, setMapType] = useState('voyager'); // 'voyager' | 'satellite' | 'terrain' | 'bhuvan'
   
   const [searchQuery, setSearchQuery] = useState('');
   const [streetViewActive, setStreetViewActive] = useState(false);
@@ -174,6 +174,9 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
     } else if (mapType === 'terrain') {
       url = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
       attrib = 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)';
+    } else if (mapType === 'bhuvan') {
+      url = 'https://bhuvan-vec1.nrsc.gov.in/bhuvan/gwc/service/wmts?layer=india3&style=_null&tilematrixset=EPSG:900913&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix={z}&TileCol={x}&TileRow={y}';
+      attrib = 'Satellite Imagery &copy; ISRO Bhuvan &mdash; National Remote Sensing Centre (NRSC)';
     }
 
     tileLayerRef.current = L.tileLayer(url, {
@@ -345,7 +348,8 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
         {[
           { id: 'voyager', label: 'Map 2D', icon: MapIcon },
           { id: 'satellite', label: 'Satellite', icon: Layers },
-          { id: 'terrain', label: 'Terrain', icon: Compass }
+          { id: 'terrain', label: 'Terrain', icon: Compass },
+          { id: 'bhuvan', label: 'ISRO Bhuvan', icon: Layers }
         ].map(opt => {
           const ActiveIcon = opt.icon;
           const isActive = mapType === opt.id;
