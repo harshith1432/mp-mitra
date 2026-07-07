@@ -2,7 +2,11 @@
 
 > **Bridging Citizens and Parliament through Real-Time AI, Infrastructure Analysis & Geospatial Intelligence**
 
+![MP Mitra Landing Page](docs/screenshots/screenshot_landing_page.png)
+
 MP Mitra is a production-grade, multi-agent AI Decision Intelligence and Constituency Digital Twin Platform designed to bridge the gap between citizens and their elected Members of Parliament (MPs). It translates real-time citizen suggestions, web-scraped local news, WhatsApp complaints, infrastructure deficit analysis, and government dataset cross-referencing into actionable, evidence-based project portfolios mapped to real village GPS coordinates.
+
+> 🔢 **15,247** Suggestions Processed · **1,24,000** Citizens Served · **₹18.2 Cr** MPLADS Budget Tracked · **94.6%** AI Accuracy Score
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
@@ -274,6 +278,13 @@ Built with ❤️ for the **India AI Hackathon 2026** — empowering India's 543
 ---
 
 ## 📸 Screenshots
+
+### 🏠 Landing Page — Portal Selection
+The MP Mitra entry portal with 4 role-based access portals: **Citizen Services** (submit complaints, track suggestions, match welfare schemes), **MP Dashboard** (digital twin, priority maps, AI advisor), **Officer Portal** (update project checklists, post site photos), and **Admin Console** (ingest national datasets, monitor node health). Platform stats show **15,247 suggestions processed**, **1,24,000 citizens served**, **₹18.2 Cr MPLADS tracked**, **94.6% AI accuracy**.
+
+![Landing Page](docs/screenshots/screenshot_landing_page.png)
+
+---
 
 ### 🗺️ AI Priority Map — Real-Time 4-Source Intelligence
 Real-time Leaflet map showing citizen complaints (📍 red), WhatsApp reports (💬 green), AI-detected infrastructure deficits (🤖 purple), and web-scraped news (📰 amber) plotted at **exact GPS coordinates** across Mandya district, Karnataka. Legend shows live source counts and auto-refresh timestamp.
