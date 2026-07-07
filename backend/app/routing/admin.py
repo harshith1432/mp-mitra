@@ -202,8 +202,10 @@ class SyncDistrictRequest(BaseModel):
 @router.post("/sync-district")
 async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get_db)):
     from app.database.dataset_manager import dataset_manager
-    state_upper = req.state.strip().upper()
-    district_upper = req.district.strip().upper()
+    from app.database.normalization import normalize_district_name, normalize_state_name
+    
+    state_upper = normalize_state_name(req.state)
+    district_upper = normalize_district_name(req.district)
     
     DATASET_DIR = dataset_manager.get_dataset_dir()
     
@@ -231,8 +233,8 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
             for row in reader:
                 if len(row) < 11:
                     continue
-                row_state = row[8].strip().upper()
-                row_district = row[7].strip().upper()
+                row_state = normalize_state_name(row[8])
+                row_district = normalize_district_name(row[7])
                 if row_state == state_upper and row_district == district_upper:
                     pk_val = str(row[4])
                     if pk_val not in existing_pks:
@@ -275,8 +277,8 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
             for row in reader:
                 if len(row) < 31:
                     continue
-                row_state = row[2].strip().upper()
-                row_district = row[4].strip().upper()
+                row_state = normalize_state_name(row[2])
+                row_district = normalize_district_name(row[4])
                 if row_state == state_upper and row_district == district_upper:
                     pk_val = str(row[14])
                     if pk_val not in existing_pks:
@@ -310,7 +312,7 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
         log_messages.append(f"Schools synced successfully: {schools_imported} new records added.")
     else:
         log_messages.append("Warning: school.csv not found, skipping schools sync.")
-
+ 
     # 3. Roads
     road_file = os.path.join(DATASET_DIR, "road.csv")
     roads_imported = 0
@@ -329,8 +331,8 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
             for row in reader:
                 if len(row) < 31:
                     continue
-                row_state = row[2].strip().upper()
-                row_district = row[4].strip().upper()
+                row_state = normalize_state_name(row[2])
+                row_district = normalize_district_name(row[4])
                 if row_state == state_upper and row_district == district_upper:
                     key = f"{row[9]}_{row[8]}".upper()
                     if key not in existing_roads:
@@ -374,8 +376,8 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
             for row in reader:
                 if len(row) < 12:
                     continue
-                row_state = row[0].strip().upper()
-                row_district = row[1].strip().upper()
+                row_state = normalize_state_name(row[0])
+                row_district = normalize_district_name(row[1])
                 if row_state == state_upper and row_district == district_upper:
                     key = f"{row[4]}_{row[3]}".upper()
                     if key not in existing_hcs:
@@ -399,7 +401,7 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
         log_messages.append(f"Health centres synced successfully: {hc_imported} new records added.")
     else:
         log_messages.append("Warning: geocode_health_centre.csv not found, skipping health centres sync.")
-
+ 
     # 5. Habitations
     hab_file = os.path.join(DATASET_DIR, "Basic_habitation_info_2012_04_01.csv")
     habs_imported = 0
@@ -418,8 +420,8 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
             for row in reader:
                 if len(row) < 13:
                     continue
-                row_state = row[0].strip().upper()
-                row_district = row[1].strip().upper()
+                row_state = normalize_state_name(row[0])
+                row_district = normalize_district_name(row[1])
                 if row_state == state_upper and row_district == district_upper:
                     key = f"{row[5]}_{row[3]}".upper()
                     if key not in existing_habs:
@@ -444,7 +446,7 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
         log_messages.append(f"Habitations synced successfully: {habs_imported} new records added.")
     else:
         log_messages.append("Warning: Basic_habitation_info_2012_04_01.csv not found, skipping habitations sync.")
-
+ 
     # 6. Water Quality
     wq_file = os.path.join(DATASET_DIR, "Water_quality_affected_habitation_2012_04_01.csv")
     wq_imported = 0
@@ -463,8 +465,8 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
             for row in reader:
                 if len(row) < 8:
                     continue
-                row_state = row[0].strip().upper()
-                row_district = row[1].strip().upper()
+                row_state = normalize_state_name(row[0])
+                row_district = normalize_district_name(row[1])
                 if row_state == state_upper and row_district == district_upper:
                     key = f"{row[5]}_{row[6]}".upper()
                     if key not in existing_wqs:

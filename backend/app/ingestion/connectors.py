@@ -11,6 +11,7 @@ import io
 from sqlalchemy.orm import Session
 from app.ingestion.base_connector import BaseConnector
 from app.database.models import School, HealthCentre, Road, Habitation, ParliamentaryConstituency
+from app.database.normalization import normalize_district_name, normalize_state_name
 
 class UdiseSchoolConnector(BaseConnector):
     def __init__(self):
@@ -33,8 +34,8 @@ class UdiseSchoolConnector(BaseConnector):
         return {
             "udise_school_code": row.get("udise_school_code") or row.get("school_code") or row.get("udise_code"),
             "school_name": row.get("school_name") or row.get("name") or row.get("sch_name"),
-            "state_name": (row.get("state_name") or row.get("state")).strip().upper(),
-            "district_name": (row.get("district_name") or row.get("district")).strip().upper(),
+            "state_name": normalize_state_name(row.get("state_name") or row.get("state")),
+            "district_name": normalize_district_name(row.get("district_name") or row.get("district")),
             "sub_district_name": row.get("sub_district_name") or row.get("block") or row.get("taluk") or "",
             "village_name": row.get("village_name") or row.get("village") or "",
             "pincode": row.get("pincode") or "",
@@ -81,8 +82,8 @@ class NhmHealthConnector(BaseConnector):
     def normalize_row(self, row: dict) -> dict:
         return {
             "facility_name": row.get("facility_name") or row.get("name"),
-            "state_name": (row.get("state_name") or row.get("state")).strip().upper(),
-            "district_name": (row.get("district_name") or row.get("district")).strip().upper(),
+            "state_name": normalize_state_name(row.get("state_name") or row.get("state")),
+            "district_name": normalize_district_name(row.get("district_name") or row.get("district")),
             "subdistrict_name": row.get("subdistrict_name") or row.get("block") or row.get("taluk") or "",
             "facility_type": row.get("facility_type") or "PHC",
             "facility_address": row.get("facility_address") or "",
@@ -125,8 +126,8 @@ class PmgsyRoadsConnector(BaseConnector):
     def normalize_row(self, row: dict) -> dict:
         return {
             "road_name": row.get("road_name") or row.get("name"),
-            "state_name": (row.get("state_name") or row.get("state")).strip().upper(),
-            "district_name": (row.get("district_name") or row.get("district")).strip().upper(),
+            "state_name": normalize_state_name(row.get("state_name") or row.get("state")),
+            "district_name": normalize_district_name(row.get("district_name") or row.get("district")),
             "block_name": row.get("block_name") or "",
             "habitation_name": row.get("habitation_name") or "",
             "upgrade_or_new": row.get("upgrade_or_new") or "New",
@@ -168,8 +169,8 @@ class JjmWaterConnector(BaseConnector):
 
     def normalize_row(self, row: dict) -> dict:
         return {
-            "state_name": (row.get("state_name") or row.get("state")).strip().upper(),
-            "district_name": (row.get("district_name") or row.get("district")).strip().upper(),
+            "state_name": normalize_state_name(row.get("state_name") or row.get("state")),
+            "district_name": normalize_district_name(row.get("district_name") or row.get("district")),
             "block_name": row.get("block_name") or "",
             "panchayat_name": row.get("panchayat_name") or "",
             "village_name": row.get("village_name") or "",

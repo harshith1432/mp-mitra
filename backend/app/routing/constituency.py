@@ -45,8 +45,9 @@ def get_districts(state: str, db: Session = Depends(get_db)):
 
 @router.get("/data")
 def get_constituency_data(state: str, district: str, db: Session = Depends(get_db)):
-    state_upper = state.strip().upper()
-    dist_upper = district.strip().upper()
+    from app.database.normalization import normalize_district_name, normalize_state_name
+    state_upper = normalize_state_name(state)
+    dist_upper = normalize_district_name(district)
     
     try:
         # 1. Fetch schools data
@@ -436,9 +437,10 @@ def get_constituency_data(state: str, district: str, db: Session = Depends(get_d
 
 @router.get("/blocks")
 def get_blocks(state: str, district: str, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
-        state_upper = state.strip().upper()
-        dist_upper = district.strip().upper()
+        state_upper = normalize_state_name(state)
+        dist_upper = normalize_district_name(district)
         
         results = db.query(Habitation.block_name).filter(
             func.upper(Habitation.state_name) == state_upper,
@@ -454,9 +456,10 @@ def get_blocks(state: str, district: str, db: Session = Depends(get_db)):
 
 @router.get("/villages")
 def get_villages(state: str, district: str, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
-        state_upper = state.strip().upper()
-        dist_upper = district.strip().upper()
+        state_upper = normalize_state_name(state)
+        dist_upper = normalize_district_name(district)
         
         # Query unique village names from Habitation database table
         results = db.query(Habitation.village_name).filter(
@@ -662,9 +665,10 @@ def get_filter_options(
 
 @router.get("/water-quality-list")
 def get_water_quality_list(state: str, district: str, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
-        state_upper = state.strip().upper()
-        district_upper = district.strip().upper()
+        state_upper = normalize_state_name(state)
+        district_upper = normalize_district_name(district)
         records = db.query(WaterQuality).filter(
             func.upper(WaterQuality.state_name) == state_upper,
             func.upper(WaterQuality.district_name) == district_upper
@@ -687,9 +691,10 @@ def get_water_quality_list(state: str, district: str, db: Session = Depends(get_
 
 @router.get("/habitation-list")
 def get_habitation_list(state: str, district: str, status: str = None, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
-        state_upper = state.strip().upper()
-        district_upper = district.strip().upper()
+        state_upper = normalize_state_name(state)
+        district_upper = normalize_district_name(district)
         query = db.query(Habitation).filter(
             func.upper(Habitation.state_name) == state_upper,
             func.upper(Habitation.district_name) == district_upper
@@ -720,9 +725,10 @@ def get_habitation_list(state: str, district: str, status: str = None, db: Sessi
 
 @router.get("/road-list")
 def get_road_list(state: str, district: str, status: str = None, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
-        state_upper = state.strip().upper()
-        district_upper = district.strip().upper()
+        state_upper = normalize_state_name(state)
+        district_upper = normalize_district_name(district)
         query = db.query(Road).filter(
             func.upper(Road.state_name) == state_upper,
             func.upper(Road.district_name) == district_upper
@@ -750,9 +756,10 @@ def get_road_list(state: str, district: str, status: str = None, db: Session = D
 
 @router.get("/school-list")
 def get_school_list(state: str, district: str, status: str = None, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
-        state_upper = state.strip().upper()
-        district_upper = district.strip().upper()
+        state_upper = normalize_state_name(state)
+        district_upper = normalize_district_name(district)
         query = db.query(School).filter(
             func.upper(School.state_name) == state_upper,
             func.upper(School.district_name) == district_upper
@@ -778,9 +785,10 @@ def get_school_list(state: str, district: str, status: str = None, db: Session =
 
 @router.get("/clinic-list")
 def get_clinic_list(state: str, district: str, type: str = None, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
-        state_upper = state.strip().upper()
-        district_upper = district.strip().upper()
+        state_upper = normalize_state_name(state)
+        district_upper = normalize_district_name(district)
         query = db.query(HealthCentre).filter(
             func.upper(HealthCentre.state_name) == state_upper,
             func.upper(HealthCentre.district_name) == district_upper

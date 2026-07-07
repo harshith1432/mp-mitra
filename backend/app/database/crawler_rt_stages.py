@@ -118,13 +118,14 @@ def load_all_district_news_rt(db, mgr):
                 summary = tmpl["summary_tpl"].format(district=district.title(), **param)
                 exists  = db.query(CrawledNews).filter(CrawledNews.title == title).first()
                 if not exists:
+                    from app.database.normalization import normalize_district_name, normalize_state_name
                     db.add(CrawledNews(
                         title=title[:250],
                         source=f"{state_name.title()} District Intelligence Feed",
                         summary=summary[:800],
                         category=tmpl["category"],
-                        state_name=state_name,
-                        district_name=district,
+                        state_name=normalize_state_name(state_name),
+                        district_name=normalize_district_name(district),
                         link=state_info["portal"],
                         severity_score=tmpl["severity_score"]
                     ))
@@ -183,11 +184,12 @@ def load_all_district_tenders_rt(db, mgr):
                 deadline  = get_deadline(DEADLINE_OFFSETS[d_idx % len(DEADLINE_OFFSETS)])
                 exists    = db.query(CrawledTender).filter(CrawledTender.title == title).first()
                 if not exists:
+                    from app.database.normalization import normalize_district_name, normalize_state_name
                     db.add(CrawledTender(
                         title=title[:250], authority=authority[:200],
                         cost=tmpl["cost_tpl"].format(**param),
                         deadline=deadline, category=tmpl["category"],
-                        state_name=state_name, district_name=district,
+                        state_name=normalize_state_name(state_name), district_name=normalize_district_name(district),
                         link=state_info["tender_portal"]
                     ))
                     count += 1

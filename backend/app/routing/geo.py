@@ -15,9 +15,18 @@ from app.routing.recommendations import _build_recommendations
 
 router = APIRouter()
 
+_GEOCODE_CACHE = {}
 
 def geocode_village_or_taluk(db_session, district_name: str, place_name: str) -> tuple:
     place_upper = place_name.strip().upper()
+    cache_key = f"{district_name}_{place_upper}"
+    if cache_key in _GEOCODE_CACHE:
+        return _GEOCODE_CACHE[cache_key]
+        
+    # Helper to save and return
+    def save_cache(lat, lon):
+        _GEOCODE_CACHE[cache_key] = (lat, lon)
+        return lat, lon
     
     # 1. Search schools for this village
     school = db_session.query(School).filter(
@@ -27,7 +36,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         School.latitude != 0.0
     ).first()
     if school:
-        return school.latitude, school.longitude
+        return save_cache(school.latitude, school.longitude)
         
     # 2. Search health centres
     hc = db_session.query(HealthCentre).filter(
@@ -37,7 +46,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         HealthCentre.latitude != 0.0
     ).first()
     if hc:
-        return hc.latitude, hc.longitude
+        return save_cache(hc.latitude, hc.longitude)
 
     # 3. Search habitations block/village and fetch any nearby school coordinates in same block/village
     hab = db_session.query(Habitation).filter(
@@ -54,7 +63,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
             School.latitude != 0.0
         ).first()
         if school_near:
-            return school_near.latitude, school_near.longitude
+            return save_cache(school_near.latitude, school_near.longitude)
 
     # 4. Generic DB-driven district centroid as fallback
     # Try to find any school or health centre in the district with valid coordinates
@@ -68,7 +77,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         lats = [s.latitude for s in any_school if s.latitude]
         lons = [s.longitude for s in any_school if s.longitude]
         if lats and lons:
-            return (
+            return save_cache(
                 statistics.mean(lats) + random.uniform(-0.2, 0.2),
                 statistics.mean(lons) + random.uniform(-0.2, 0.2)
             )
@@ -80,10 +89,10 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         Pincode.latitude != 0.0
     ).first()
     if ref:
-        return ref.latitude + random.uniform(-0.15, 0.15), ref.longitude + random.uniform(-0.15, 0.15)
+        return save_cache(ref.latitude + random.uniform(-0.15, 0.15), ref.longitude + random.uniform(-0.15, 0.15))
             
     # 6. Absolute geographic centre of India as last resort
-    return 20.5937 + random.uniform(-1.0, 1.0), 78.9629 + random.uniform(-1.0, 1.0)
+    return save_cache(20.5937 + random.uniform(-1.0, 1.0), 78.9629 + random.uniform(-1.0, 1.0))
 
 
 @router.get("/reverse")
@@ -131,14 +140,23 @@ def get_heatmap_coordinates(
     # 1. Fetch AI recommendations (where there is no government implementation yet)
     try:
         ai_recs = _build_recommendations(state_name, district_name, db_session)
+        
+        # Pre-fetch all habitations in the district to perform in-memory lookup, avoiding N+1 queries!
+        all_habs = db_session.query(Habitation).filter(
+            func.upper(Habitation.district_name) == district_name
+        ).all()
+        
+        # Build in-memory lookup dictionary
+        hab_lookup = {}
+        for h in all_habs:
+            if h.village_name:
+                hab_lookup[h.village_name.strip().upper()] = h
+            if h.block_name:
+                hab_lookup[h.block_name.strip().upper()] = h
+                
         for i, rec in enumerate(ai_recs):
-            # Assign coordinate near the village or Mandya centroid
-            # Check if there's a habitation with matching block/village to get closer coordinates
-            hab_match = db_session.query(Habitation).filter(
-                func.upper(Habitation.district_name) == district_name,
-                (func.upper(Habitation.village_name) == func.upper(rec["village"])) |
-                (func.upper(Habitation.block_name) == func.upper(rec["village"]))
-            ).first()
+            rec_village_upper = rec["village"].strip().upper()
+            hab_match = hab_lookup.get(rec_village_upper)
             
             lat, lon = geocode_village_or_taluk(db_session, district_name, rec["village"])
             if hab_match:
@@ -154,8 +172,8 @@ def get_heatmap_coordinates(
                 "lon": lon,
                 "intensity": float(rec["score"]) / 100.0,
                 "village": rec["village"],
-                "taluk_name": taluk.title(),
-                "panchayat_name": panchayat.title(),
+                "taluk_name": taluk.title() if taluk else "Unknown Block",
+                "panchayat_name": panchayat.title() if panchayat else "Gram Panchayat",
                 "district": district_name,
                 "state": state_name,
                 "category": rec["category"],

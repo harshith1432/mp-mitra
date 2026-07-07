@@ -727,6 +727,7 @@ def load_national_schemes(db, log_messages):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def load_all_district_news(db, log_messages):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     count = 0
     total_districts = sum(len(v["districts"]) for v in INDIA_STATES_DISTRICTS.values())
     log_messages.append(f"  Generating news intelligence for {total_districts} districts across {len(INDIA_STATES_DISTRICTS)} states/UTs...")
@@ -749,8 +750,8 @@ def load_all_district_news(db, log_messages):
                         source=f"{state_name.title()} District Intelligence Feed",
                         summary=summary[:800],
                         category=tmpl["category"],
-                        state_name=state_name,
-                        district_name=district,
+                        state_name=normalize_state_name(state_name),
+                        district_name=normalize_district_name(district),
                         link=state_info["portal"],
                         severity_score=tmpl["severity_score"]
                     ))
@@ -763,6 +764,7 @@ def load_all_district_news(db, log_messages):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def load_all_district_tenders(db, log_messages):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     count = 0
     log_messages.append(f"  Generating infrastructure tenders for all India districts...")
 
@@ -783,8 +785,8 @@ def load_all_district_tenders(db, log_messages):
                         cost=tmpl["cost_tpl"].format(**param),
                         deadline=deadline,
                         category=tmpl["category"],
-                        state_name=state_name,
-                        district_name=district,
+                        state_name=normalize_state_name(state_name),
+                        district_name=normalize_district_name(district),
                         link=state_info["tender_portal"]
                     ))
                     count += 1

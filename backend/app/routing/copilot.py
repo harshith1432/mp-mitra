@@ -359,15 +359,20 @@ from sqlalchemy import text
 
 @router.get("/news")
 def get_crawled_news(state: str = None, district: str = None, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
         sql = "SELECT * FROM crawled_news WHERE 1=1"
         params = {}
         if state:
-            sql += " AND (UPPER(state_name) = :state OR UPPER(state_name) = 'ALL')"
-            params["state"] = state.strip().upper()
+            state_norm = normalize_state_name(state)
+            sql += " AND (UPPER(state_name) = :state OR UPPER(state_name) = :state_raw OR UPPER(state_name) = 'ALL')"
+            params["state"] = state_norm
+            params["state_raw"] = state.strip().upper()
         if district:
-            sql += " AND (UPPER(district_name) = :district OR UPPER(district_name) = 'ALL')"
-            params["district"] = district.strip().upper()
+            dist_norm = normalize_district_name(district)
+            sql += " AND (UPPER(district_name) = :district OR UPPER(district_name) = :district_raw OR UPPER(district_name) = 'ALL')"
+            params["district"] = dist_norm
+            params["district_raw"] = district.strip().upper()
         sql += " ORDER BY severity_score DESC, crawled_at DESC"
         
         result = db.execute(text(sql), params).mappings().all()
@@ -378,15 +383,20 @@ def get_crawled_news(state: str = None, district: str = None, db: Session = Depe
 
 @router.get("/tenders")
 def get_crawled_tenders(state: str = None, district: str = None, db: Session = Depends(get_db)):
+    from app.database.normalization import normalize_district_name, normalize_state_name
     try:
         sql = "SELECT * FROM crawled_tenders WHERE 1=1"
         params = {}
         if state:
-            sql += " AND (UPPER(state_name) = :state OR UPPER(state_name) = 'ALL')"
-            params["state"] = state.strip().upper()
+            state_norm = normalize_state_name(state)
+            sql += " AND (UPPER(state_name) = :state OR UPPER(state_name) = :state_raw OR UPPER(state_name) = 'ALL')"
+            params["state"] = state_norm
+            params["state_raw"] = state.strip().upper()
         if district:
-            sql += " AND (UPPER(district_name) = :district OR UPPER(district_name) = 'ALL')"
-            params["district"] = district.strip().upper()
+            dist_norm = normalize_district_name(district)
+            sql += " AND (UPPER(district_name) = :district OR UPPER(district_name) = :district_raw OR UPPER(district_name) = 'ALL')"
+            params["district"] = dist_norm
+            params["district_raw"] = district.strip().upper()
         sql += " ORDER BY crawled_at DESC"
         
         result = db.execute(text(sql), params).mappings().all()

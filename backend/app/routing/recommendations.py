@@ -142,8 +142,9 @@ def _build_recommendations(
     Core function: reads ALL real data from the DB and returns a list of
     prioritised recommendations. No fake data is generated.
     """
-    state_upper = state.strip().upper()
-    dist_upper  = district.strip().upper()
+    from app.database.normalization import normalize_district_name, normalize_state_name
+    state_upper = normalize_state_name(state)
+    dist_upper  = normalize_district_name(district)
     recs = []
 
     # ── Fetch citizen complaints (real voice data) ──────────────────────────
