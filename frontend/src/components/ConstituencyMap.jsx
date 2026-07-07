@@ -29,6 +29,7 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
   const [points, setPoints] = useState([]);
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [mapType, setMapType] = useState('voyager'); // 'voyager' | 'satellite' | 'terrain' | 'bhuvan'
+  const [mapReady, setMapReady] = useState(false); // true once Leaflet instance + layer groups are created
   
   const [searchQuery, setSearchQuery] = useState('');
   const [streetViewActive, setStreetViewActive] = useState(false);
@@ -213,6 +214,9 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
       markersLayerRef.current = L.layerGroup().addTo(map);
       circlesLayerRef.current = L.layerGroup().addTo(map);
 
+      // Signal that the map is ready so the marker rendering effect re-runs
+      setMapReady(true);
+
       // Call invalidateSize after a short timeout to handle tab rendering sizing delays!
       setTimeout(() => {
         if (mapInstanceRef.current) {
@@ -256,9 +260,11 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
       attribution: attrib,
       maxZoom: 18
     }).addTo(mapInstanceRef.current);
-  }, [mapType]);
+  }, [mapType, mapReady]);
 
   // 4. Update Markers and Heat Circles (Color Coded by Priority)
+  // Depends on both `points` AND `mapReady` so that it re-runs once
+  // the Leaflet instance is initialized (refs don't trigger React re-renders).
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !markersLayerRef.current || !circlesLayerRef.current) return;
@@ -316,7 +322,7 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
         mapInstanceRef.current.fitBounds(latLngs, { padding: [40, 40], maxZoom: 13 });
       } catch (_) { /* ignore fitBounds errors */ }
     }
-  }, [points]);
+  }, [points, mapReady]);
 
   // 5. Handle Map Clicks for Street View Mode
   useEffect(() => {
