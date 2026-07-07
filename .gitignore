@@ -43,3 +43,14 @@ DATASET/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Large binary files — never commit these to GitHub
+*.zip
+*.exe
+*.msi
+*.dmg
+*.tar.gz
+*.rar
+sha256sums.txt
+MPMitraDatasets.zip
+MPMitraSetup*.zip

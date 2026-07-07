@@ -217,6 +217,8 @@ class CrawlerLog(Base):
     message = Column(Text)
 
 
+
+
 class VisitedUrl(Base):
     __tablename__ = "visited_urls"
     url = Column(String(500), primary_key=True)
@@ -224,4 +226,80 @@ class VisitedUrl(Base):
     crawled_at = Column(DateTime, default=func.now())
 
 
+# ─── Phase 1: Parliamentary Constituency Mapping ──────────────────────────────
 
+class ParliamentaryConstituency(Base):
+    """
+    543 Parliamentary Constituencies of India (Lok Sabha seats).
+    Source: Election Commission of India (ECI).
+    pc_code follows the ECI official numbering scheme.
+    """
+    __tablename__ = "parliamentary_constituencies"
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    pc_code      = Column(String(10), unique=True, index=True)   # ECI code e.g. "S14001"
+    pc_name      = Column(String(255), index=True)               # e.g. "MYSURU"
+    state_name   = Column(String(100), index=True)
+    total_voters = Column(Integer, default=0)
+    mp_name      = Column(String(255), nullable=True)
+    mp_party     = Column(String(100), nullable=True)
+    mp_since     = Column(String(20), nullable=True)             # year elected
+    area_sq_km   = Column(Float, nullable=True)
+    created_at   = Column(DateTime, default=func.now())
+    updated_at   = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class AssemblyConstituency(Base):
+    """
+    ~4,120 Assembly Constituencies (Vidhan Sabha seats).
+    Each AC belongs to exactly one Parliamentary Constituency.
+    """
+    __tablename__ = "assembly_constituencies"
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    ac_code    = Column(String(10), unique=True, index=True)     # ECI AC code
+    ac_name    = Column(String(255), index=True)
+    pc_code    = Column(String(10), ForeignKey("parliamentary_constituencies.pc_code"), index=True)
+    state_name = Column(String(100), index=True)
+    mla_name   = Column(String(255), nullable=True)
+    mla_party  = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=func.now())
+
+
+class ConstituencyVillageMap(Base):
+    """
+    Master join table: Village → Panchayat → Taluk → District → AC → PC.
+    This is the backbone of the national hierarchy — every village entry
+    in MP Mitra can be resolved to its Parliamentary Constituency through this table.
+    Source: LGD (Local Government Directory) + ECI delimitation data.
+    """
+    __tablename__ = "constituency_village_map"
+    id             = Column(Integer, primary_key=True, autoincrement=True)
+    state_name     = Column(String(100), index=True)
+    district_name  = Column(String(100), index=True)
+    taluk_name     = Column(String(100), index=True)
+    panchayat_name = Column(String(255))
+    village_name   = Column(String(255), index=True)
+    village_code   = Column(String(20), nullable=True)           # LGD village code
+    ac_code        = Column(String(10), ForeignKey("assembly_constituencies.ac_code"), nullable=True, index=True)
+    pc_code        = Column(String(10), ForeignKey("parliamentary_constituencies.pc_code"), nullable=True, index=True)
+    latitude       = Column(Float, nullable=True)
+    longitude      = Column(Float, nullable=True)
+    population     = Column(Integer, default=0)
+    created_at     = Column(DateTime, default=func.now())
+
+
+class ConstituencyBudgetAllocation(Base):
+    """
+    Budget allocations and MPLADS fund utilization per Parliamentary Constituency.
+    MPs get ₹5 crore/year under MPLADS. This tracks how it is spent.
+    """
+    __tablename__ = "constituency_budget"
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    pc_code      = Column(String(10), ForeignKey("parliamentary_constituencies.pc_code"), index=True)
+    scheme_name  = Column(String(255))
+    project_name = Column(String(255), nullable=True)
+    amount_cr    = Column(Float, default=0.0)
+    year         = Column(String(10))                            # e.g. "2024-25"
+    status       = Column(String(50), default="Proposed")       # Released / Pending / Utilized / Completed
+    district     = Column(String(100), nullable=True)
+    village      = Column(String(255), nullable=True)
+    created_at   = Column(DateTime, default=func.now())

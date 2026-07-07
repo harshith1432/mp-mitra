@@ -3,7 +3,7 @@
 # Builds the React frontend with the configured Render backend URL
 # and deploys it to Firebase Hosting.
 
-Write-Host "🚀 Starting MP Mitra Frontend Deploy Pipeline..." -ForegroundColor Cyan
+Write-Host "Starting MP Mitra Frontend Deploy Pipeline..." -ForegroundColor Cyan
 
 # Check if npm is installed
 if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
@@ -18,7 +18,7 @@ if (-not (Get-Command "firebase" -ErrorAction SilentlyContinue)) {
 }
 
 # 1. Build the React application
-Write-Host "`n📦 Step 1: Compiling React Frontend (Vite)..." -ForegroundColor Yellow
+Write-Host "Step 1: Compiling React Frontend (Vite)..." -ForegroundColor Yellow
 Set-Location -Path "frontend"
 npm install
 npm run build
@@ -29,7 +29,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 2. Deploy to Firebase hosting
-Write-Host "`n☁️ Step 2: Deploying to Firebase Hosting..." -ForegroundColor Yellow
+Write-Host "Step 2: Deploying to Firebase Hosting..." -ForegroundColor Yellow
 Set-Location -Path ".."
 firebase deploy --only hosting
 
@@ -38,4 +38,4 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "`n🎉 Success! Your frontend is live on Firebase and connected to the Render backend." -ForegroundColor Green
+Write-Host "Success! Your frontend is live on Firebase and connected to the Render backend." -ForegroundColor Green

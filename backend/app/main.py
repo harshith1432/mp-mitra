@@ -215,6 +215,7 @@ from app.routing.copilot import router as copilot_router
 from app.routing.whatsapp import router as whatsapp_router
 from app.routing.geo import router as geo_router
 from app.routing.recommendations import router as recommendations_router
+from app.routing.constituency_map import router as constituency_map_router
 
 app.include_router(constituency_router,    prefix="/api/constituency",    tags=["Constituency"])
 app.include_router(citizen_router,         prefix="/api/citizen",         tags=["Citizen Interaction"])
@@ -224,6 +225,7 @@ app.include_router(copilot_router,         prefix="/api/copilot",         tags=[
 app.include_router(whatsapp_router,        prefix="/api/whatsapp",        tags=["WhatsApp Webhook"])
 app.include_router(geo_router,             prefix="/api/geo",             tags=["Geospatial Intelligence"])
 app.include_router(recommendations_router, prefix="/api/recommendations", tags=["AI Recommendations"])
+app.include_router(constituency_map_router,prefix="/api/constituency-map",tags=["Constituency Mapping"])
 
 
 # ─── Startup ──────────────────────────────────────────────────────────────────
@@ -231,6 +233,25 @@ app.include_router(recommendations_router, prefix="/api/recommendations", tags=[
 def startup_event():
     print("Database tables validated.")
     Base.metadata.create_all(bind=engine)
+
+    # Seed Parliamentary Constituency data if tables are empty
+    def bg_seed_constituencies():
+        try:
+            from app.database.connection import SessionLocal
+            from app.database.models import ParliamentaryConstituency
+            from app.database.seed_constituencies import seed
+            db = SessionLocal()
+            count = db.query(ParliamentaryConstituency).count()
+            if count == 0:
+                print("[Startup] Seeding constituency data (first run)...")
+                seed(db)
+            else:
+                print(f"[Startup] Constituency data already seeded ({count} PCs found).")
+            db.close()
+        except Exception as err:
+            print(f"[Startup] Constituency seed failed: {err}")
+    import threading
+    threading.Thread(target=bg_seed_constituencies, daemon=True).start()
 
     # Initialize / index RAG vector store in background thread to keep startup fast
     import threading

@@ -2429,6 +2429,39 @@ export default function App() {
   const [constituencyData, setConstituencyData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ── Parliamentary Constituency state ─────────────────────────────────────────
+  const [selectedPC, setSelectedPC]     = useState(() => localStorage.getItem('mp_pc_code') || '');
+  const [selectedPCName, setSelectedPCName] = useState(() => localStorage.getItem('mp_pc_name') || '');
+  const [pcList, setPcList]             = useState([]);
+
+  // Fetch PC list whenever state changes
+  React.useEffect(() => {
+    if (!selectedState) return;
+    fetch(`${API_BASE}/api/constituency-map/list?state=${selectedState}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.status === 'success' && d.constituencies?.length > 0) {
+          setPcList(d.constituencies);
+          // Auto-select first PC if nothing selected or selected PC not in this state
+          if (!selectedPC || !d.constituencies.find(c => c.pc_code === selectedPC)) {
+            setSelectedPC(d.constituencies[0].pc_code);
+            setSelectedPCName(d.constituencies[0].pc_name);
+            localStorage.setItem('mp_pc_code', d.constituencies[0].pc_code);
+            localStorage.setItem('mp_pc_name', d.constituencies[0].pc_name);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [selectedState]);
+
+  const handlePCChange = (pc_code) => {
+    const found = pcList.find(c => c.pc_code === pc_code);
+    setSelectedPC(pc_code);
+    setSelectedPCName(found ? found.pc_name : pc_code);
+    localStorage.setItem('mp_pc_code', pc_code);
+    localStorage.setItem('mp_pc_name', found ? found.pc_name : pc_code);
+  };
+
   // Persist state/district to both per-tab sessionStorage and cross-tab localStorage
   const handleStateChange = (s) => {
     setSelectedState(s);
@@ -2439,6 +2472,19 @@ export default function App() {
     setSelectedDistrict(d);
     ss.set('mp_district', d);
     localStorage.setItem('mp_district', d);
+    // Auto-resolve to correct PC when district changes
+    fetch(`${API_BASE}/api/constituency-map/resolve?state=${selectedState}&district=${d}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.parliamentary_constituencies?.length > 0) {
+          const first = data.parliamentary_constituencies[0];
+          setSelectedPC(first.pc_code);
+          setSelectedPCName(first.pc_name);
+          localStorage.setItem('mp_pc_code', first.pc_code);
+          localStorage.setItem('mp_pc_name', first.pc_name);
+        }
+      })
+      .catch(() => {});
   };
 
   const dName = selectedDistrict ? (selectedDistrict.charAt(0).toUpperCase() + selectedDistrict.slice(1).toLowerCase()) : 'Mandya';
@@ -3751,6 +3797,11 @@ export default function App() {
                     </div>
                     <div style={{ fontSize:'13px', fontWeight:800, color:'#1a1a1a', lineHeight:1.2 }}>{selectedDistrict}</div>
                     <div style={{ fontSize:'11px', color:'#6B6B6B', marginTop:'2px' }}>{selectedState}</div>
+                    {selectedPCName && (
+                      <div style={{ fontSize:'10px', color:'#003B7A', marginTop:'4px', fontWeight:600 }}>
+                        🏛️ {selectedPCName} PC
+                      </div>
+                    )}
                   </div>
                 ) : (
                   // EDIT MODE — shows dropdowns with a lock/save button
@@ -3765,6 +3816,15 @@ export default function App() {
                         : <option value={selectedDistrict}>{selectedDistrict}</option>
                       }
                     </select>
+                    {/* Parliamentary Constituency picker */}
+                    {pcList.length > 0 && (
+                      <div>
+                        <div style={{ fontSize:'9px', fontWeight:700, textTransform:'uppercase', color:'#6B6B6B', letterSpacing:'0.05em', marginBottom:'3px' }}>🏛️ Parliament Constituency</div>
+                        <select value={selectedPC} onChange={e=>handlePCChange(e.target.value)} className="gov-input" style={{ fontSize:'11px', padding:'6px 10px' }}>
+                          {pcList.map(c=><option key={c.pc_code} value={c.pc_code}>{c.pc_name}</option>)}
+                        </select>
+                      </div>
+                    )}
                     <button onClick={()=>setMpConstituencyLocked(true)} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', padding:'8px', background:'#FF6B1A', color:'white', border:'none', borderRadius:'6px', fontSize:'12px', fontWeight:700, cursor:'pointer' }}>🔒 {t('dashboard.save')}</button>
                   </div>
                 )}
