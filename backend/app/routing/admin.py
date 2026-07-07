@@ -2,6 +2,7 @@ import os
 import uuid
 import csv
 import io
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 

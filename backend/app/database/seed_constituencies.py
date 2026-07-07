@@ -257,9 +257,74 @@ def seed(db):
     print("[Seed] 🎉 Constituency seed complete!")
 
 
+def seed_sqlite(conn):
+    """Seed ECI constituencies to SQLite using direct SQL connection."""
+    cursor = conn.cursor()
+    
+    # 1. Parliamentary Constituencies
+    print("[Seed SQLite] Seeding Parliamentary Constituencies...")
+    for entry in KARNATAKA_PCS:
+        cursor.execute("""
+            INSERT OR IGNORE INTO parliamentary_constituencies (pc_code, pc_name, state_name, total_voters, mp_name, mp_party)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (entry["pc_code"], entry["pc_name"], "KARNATAKA", 1200000, entry.get("mp_name"), entry.get("mp_party")))
+        
+    for entry in TELANGANA_PCS:
+        cursor.execute("""
+            INSERT OR IGNORE INTO parliamentary_constituencies (pc_code, pc_name, state_name, total_voters, mp_name, mp_party)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (entry["pc_code"], entry["pc_name"], "TELANGANA", 1000000, entry.get("mp_name"), entry.get("mp_party")))
+
+    # 2. Assembly Constituencies
+    print("[Seed SQLite] Seeding Assembly Constituencies...")
+    for ac in MANDYA_ACS + MYSORE_ACS:
+        cursor.execute("""
+            INSERT OR IGNORE INTO assembly_constituencies (ac_code, ac_name, pc_code, state_name)
+            VALUES (?, ?, ?, ?)
+        """, (ac["ac_code"], ac["ac_name"], ac["pc_code"], "KARNATAKA"))
+
+    # 3. Constituency-Village Mappings
+    print("[Seed SQLite] Seeding Constituency-Village mappings...")
+    all_villages = [
+        (v, "KARNATAKA", "MANDYA")   for v in MANDYA_VILLAGES
+    ] + [
+        (v, "KARNATAKA", "MYSORE")   for v in MYSORE_VILLAGES
+    ] + [
+        (v, "TELANGANA", "ADILABAD") for v in ADILABAD_VILLAGES
+    ] + [
+        (v, "TELANGANA", "KARIMNAGAR") for v in KARIMNAGAR_VILLAGES
+    ]
+    
+    for (vname, taluk, panchayat, ac_code, pc_code, lat, lng, pop), state, district in all_villages:
+        cursor.execute("""
+            INSERT OR IGNORE INTO constituency_village_map (state_name, district_name, taluk_name, panchayat_name, village_name, ac_code, pc_code, latitude, longitude, population)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (state, district, taluk, panchayat, vname, ac_code, pc_code, lat, lng, pop))
+
+    # 4. MPLADS budgets
+    print("[Seed SQLite] Seeding MPLADS budget allocations...")
+    sample_budget = [
+        ("MPLADS", "Mandya PHC Building Construction",    1.20, "2024-25", "Utilized",  "MANDYA", "MANDYA"),
+        ("MPLADS", "Maddur Road Repair PMGSY",            0.85, "2024-25", "Released",  "MANDYA", "MADDUR"),
+        ("MPLADS", "Srirangapatna School Fencing",        0.45, "2024-25", "Completed", "MANDYA", "SRIRANGAPATNA"),
+        ("MPLADS", "Malavalli Water Supply Pipeline",     1.50, "2023-24", "Completed", "MANDYA", "MALAVALLI"),
+        ("MPLADS", "Kirugavalu Anganwadi Construction",   0.35, "2023-24", "Utilized",  "MANDYA", "KIRUGAVALU"),
+        ("MP LAD", "Pandavapura Drainage Layout",         0.65, "2024-25", "Pending",   "MANDYA", "PANDAVAPURA"),
+    ]
+    for scheme, project, amount, year, status, district, village in sample_budget:
+        cursor.execute("""
+            INSERT OR IGNORE INTO constituency_budget (pc_code, scheme_name, project_name, amount_cr, year, status, district, village)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, ("S08019", scheme, project, amount, year, status, district, village))
+        
+    conn.commit()
+    print("[Seed SQLite] Constituency seed complete!")
+
+
 if __name__ == "__main__":
     db = SessionLocal()
     try:
         seed(db)
     finally:
         db.close()
+
