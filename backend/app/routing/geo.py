@@ -180,6 +180,7 @@ def get_heatmap_coordinates(
     coords = []
     district_name = (district or "MANDYA").strip().upper()
     state_name = (state or "KARNATAKA").strip().upper()
+    all_habs = []
 
     # 1. Fetch AI recommendations (where there is no government implementation yet)
     try:
@@ -328,9 +329,9 @@ def get_heatmap_coordinates(
 
     # Fallback/Additional SQL local complaints
     try:
-        from sqlalchemy import text
-        complaints_exist = db_session.execute(text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'complaints')")).scalar()
-        if complaints_exist:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db_session.bind)
+        if inspector.has_table("complaints"):
             sql = "SELECT id, village_name, district_name, state_name, text_content, category, urgency, created_at FROM complaints"
             if district_name:
                 sql += " WHERE UPPER(district_name) = :dist"

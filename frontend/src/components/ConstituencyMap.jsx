@@ -198,14 +198,15 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
       if (!p || typeof p.lat !== 'number' || typeof p.lon !== 'number' || isNaN(p.lat) || isNaN(p.lon)) {
         return;
       }
-      const color = getPriorityColor(p.priority);
+      const priorityNum = typeof p.priority === 'number' ? p.priority : (Number(p.priority) || 50);
+      const color = getPriorityColor(priorityNum);
 
       // Heat Circle
       const circle = L.circle([p.lat, p.lon], {
         color: color,
         fillColor: color,
         fillOpacity: 0.25,
-        radius: 350 + (p.priority * 2)
+        radius: 350 + (priorityNum * 2)
       }).addTo(circlesLayerRef.current);
 
       // Custom Div Icon based on Priority Color
