@@ -148,7 +148,7 @@ def main():
         sync_table_for_district(local_db, remote_db, WaterQuality, args.state, args.district, pk_attr="id")
         sync_table_for_district(local_db, remote_db, VillageAmenities, args.state, args.district, pk_attr="id")
         
-        print("\n🎉 Synchronization completed successfully!")
+        print("\nSynchronization completed successfully!")
     finally:
         local_db.close()
         remote_db.close()
