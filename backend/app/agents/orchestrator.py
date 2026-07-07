@@ -271,13 +271,37 @@ def process_submission(phone: str, submission_id: str, temp_data: Dict[str, Any]
     # ── Node 8: LLM Reasoning (Qwen 3 / Gemini) ────────────────────────────────
     update_submission_status(phone, submission_id, "Generating Decision Intelligence", progress=85)
     
-    category = "Infrastructure Need"
-    if "water" in en_text.lower() or "pipe" in en_text.lower():
-        category = "Water & Sanitation"
-    elif "road" in en_text.lower() or "pothole" in en_text.lower():
-        category = "Roads & Connectivity"
-    elif "hospital" in en_text.lower() or "medicine" in en_text.lower():
-        category = "Healthcare & Welfare"
+    CATEGORY_KEYWORDS = {
+        "Roads & Transport": ["road", "pothole", "bridge", "highway", "pavement", "street", "street light", "transport"],
+        "Drinking Water": ["water", "pipe", "drinking", "jal", "jeevan", "contamination", "fluoride", "arsenic", "ro plant", "tap"],
+        "Healthcare": ["hospital", "medicine", "doctor", "nurse", "clinic", "phc", "health", "treatment", "ambulance"],
+        "Education": ["school", "teacher", "education", "student", "classroom", "college", "university", "ptr", "learning"],
+        "Electricity": ["electricity", "power", "load shedding", "grid", "transformer", "electric", "lighting", "meter"],
+        "Agriculture": ["agriculture", "farm", "crop", "irrigation", "kisan", "soil", "fertilizer", "seed"],
+        "Employment & Skill Development": ["employment", "job", "work", "livelihood", "skill", "labour", "unemployment", "mgnrega"],
+        "Housing": ["house", "housing", "shelter", "awas", "homeless", "pucca", "roof"],
+        "Sanitation & Waste Management": ["sanitation", "toilet", "drain", "drainage", "waste", "garbage", "trash", "sewage", "dump"],
+        "Environment": ["environment", "pollution", "tree", "forest", "green", "plastic", "climate", "conservation", "river", "lake"],
+        "Women & Child Welfare": ["women", "child", "anganwadi", "poshan", "nutrition", "girl", "maternity", "mahila", "icds", "stunting"],
+        "Senior Citizens": ["senior", "elderly", "pension", "old age", "aged", "vridha"],
+        "Disability & Accessibility": ["disability", "handicapped", "accessible", "ramp", "divyang", "blind", "deaf"],
+        "Public Safety": ["safety", "crime", "police", "accident", "theft", "violence", "security", "cctv", "patrol"],
+        "Disaster Management": ["flood", "disaster", "cyclone", "drought", "relief", "calamity", "earthquake", "fire", "emergency"],
+        "Urban Development": ["urban", "town", "municipality", "smart city", "sewage", "city", "ward"],
+        "Rural Development": ["rural", "village", "gram", "panchayat", "block", "development", "backward"],
+        "Digital Connectivity": ["internet", "broadband", "mobile", "network", "signal", "digital", "wifi", "telecom", "cellular"],
+        "Public Transport": ["bus", "transport", "auto", "rickshaw", "train", "station", "commute", "route"],
+        "Tourism & Heritage": ["tourism", "heritage", "temple", "monument", "tourist", "pilgrimage", "culture"],
+        "Sports & Youth": ["sports", "playground", "youth", "stadium", "gym", "khelo", "cricket", "kabaddi"],
+        "Markets & Local Economy": ["market", "shop", "bazaar", "haat", "trader", "vendor", "price", "mandi"],
+        "Governance & Public Services": ["governance", "certificate", "ration", "document", "office", "official", "caste", "bpl", "corruption", "ration card"],
+    }
+    category = "Governance & Public Services"
+    text_lower_en = en_text.lower()
+    for cat_name, keywords in CATEGORY_KEYWORDS.items():
+        if any(kw in text_lower_en for kw in keywords):
+            category = cat_name
+            break
         
     system_prompt = f"""You are MP MITRA, an advanced Development Intelligence Engine.
     Analyze the citizen's request for village {village}, district {district}, state {state}.

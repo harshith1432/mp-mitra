@@ -40,29 +40,29 @@ MID_THRESHOLD  = 40     # score 40-69  → MID
 # ─── Category colour map ─────────────────────────────────────────────────────
 
 CATEGORY_META = {
-    "Healthcare":           {"color": "#C62B2B", "scheme": "National Health Mission (NHM)",              "icon": "🏥"},
-    "Water Supply":        {"color": "#003B7A", "scheme": "Jal Jeevan Mission (JJM)",                  "icon": "💧"},
-    "Education":           {"color": "#FF6B1A", "scheme": "Samagra Shiksha Abhiyan",                    "icon": "🎓"},
-    "Roads":               {"color": "#138808", "scheme": "PMGSY Phase III",                            "icon": "🚧"},
-    "Sanitation":          {"color": "#7B2FBE", "scheme": "Swachh Bharat Mission",                      "icon": "🚮"},
-    "Electricity":         {"color": "#D97706", "scheme": "PM Sahaj Bijli Har Ghar Yojana",             "icon": "⚡"},
-    "Connectivity":        {"color": "#0891B2", "scheme": "BharatNet Phase II",                         "icon": "💻"},
-    "Agriculture":         {"color": "#65A30D", "scheme": "PM Kisan Samman Nidhi / PMFBY",             "icon": "🌾"},
-    "Employment":          {"color": "#7C3AED", "scheme": "MGNREGS / Skill India Mission",              "icon": "💼"},
-    "Housing":             {"color": "#B45309", "scheme": "Pradhan Mantri Awas Yojana (PMAY)",          "icon": "🏠"},
-    "Environment":         {"color": "#15803D", "scheme": "CAMPA / Green India Mission",               "icon": "🌳"},
-    "Women & Child":       {"color": "#DB2777", "scheme": "Mission Shakti / Poshan 2.0",               "icon": "👩"},
-    "Senior Citizens":     {"color": "#78350F", "scheme": "Integrated Programme for Older Persons",    "icon": "👴"},
-    "Disability":          {"color": "#0369A1", "scheme": "Accessible India (Sugamya Bharat)",          "icon": "♿"},
-    "Public Safety":       {"color": "#991B1B", "scheme": "CCTNS / Safe City Programme",               "icon": "🚓"},
-    "Disaster Management": {"color": "#92400E", "scheme": "NDRF / SDRF Disaster Relief Fund",          "icon": "🌪️"},
-    "Urban Development":   {"color": "#1D4ED8", "scheme": "Smart Cities / AMRUT 2.0",                  "icon": "🏙️"},
-    "Rural Development":   {"color": "#166534", "scheme": "RURBAN Mission / PURA",                     "icon": "🌾"},
-    "Public Transport":    {"color": "#0F766E", "scheme": "National Urban Transport Policy",            "icon": "🚌"},
-    "Tourism":             {"color": "#C2410C", "scheme": "Swadesh Darshan / PRASHAD",                 "icon": "🏛️"},
-    "Sports":              {"color": "#4338CA", "scheme": "Khelo India / NSDC",                        "icon": "⚽"},
-    "Markets":             {"color": "#854D0E", "scheme": "eNAM / Gramin Haat Programme",              "icon": "🛒"},
-    "Governance":          {"color": "#374151", "scheme": "Digital India / e-Gram Swaraj",             "icon": "📑"},
+    "Roads & Transport":             {"color": "#138808", "scheme": "PMGSY Phase III",                            "icon": "🚧"},
+    "Drinking Water":                {"color": "#003B7A", "scheme": "Jal Jeevan Mission (JJM)",                  "icon": "💧"},
+    "Healthcare":                    {"color": "#C62B2B", "scheme": "National Health Mission (NHM)",              "icon": "🏥"},
+    "Education":                     {"color": "#FF6B1A", "scheme": "Samagra Shiksha Abhiyan",                    "icon": "🎓"},
+    "Electricity":                   {"color": "#D97706", "scheme": "PM Sahaj Bijli Har Ghar Yojana",             "icon": "⚡"},
+    "Agriculture":                   {"color": "#65A30D", "scheme": "PM Kisan Samman Nidhi / PMFBY",             "icon": "🌾"},
+    "Employment & Skill Development": {"color": "#7C3AED", "scheme": "MGNREGS / Skill India Mission",             "icon": "💼"},
+    "Housing":                       {"color": "#B45309", "scheme": "Pradhan Mantri Awas Yojana (PMAY)",          "icon": "🏠"},
+    "Sanitation & Waste Management":  {"color": "#7B2FBE", "scheme": "Swachh Bharat Mission",                      "icon": "🚮"},
+    "Environment":                   {"color": "#15803D", "scheme": "CAMPA / Green India Mission",               "icon": "🌳"},
+    "Women & Child Welfare":         {"color": "#DB2777", "scheme": "Mission Shakti / Poshan 2.0",               "icon": "👩"},
+    "Senior Citizens":               {"color": "#78350F", "scheme": "Integrated Programme for Older Persons",    "icon": "👴"},
+    "Disability & Accessibility":    {"color": "#0369A1", "scheme": "Accessible India (Sugamya Bharat)",          "icon": "♿"},
+    "Public Safety":                 {"color": "#991B1B", "scheme": "CCTNS / Safe City Programme",               "icon": "🚓"},
+    "Disaster Management":           {"color": "#92400E", "scheme": "NDRF / SDRF Disaster Relief Fund",          "icon": "🌪️"},
+    "Urban Development":             {"color": "#1D4ED8", "scheme": "Smart Cities / AMRUT 2.0",                  "icon": "🏙️"},
+    "Rural Development":             {"color": "#166534", "scheme": "RURBAN Mission / PURA",                     "icon": "🌾"},
+    "Digital Connectivity":          {"color": "#0891B2", "scheme": "BharatNet Phase II / Telecom Tower Scheme",  "icon": "💻"},
+    "Public Transport":              {"color": "#0F766E", "scheme": "National Urban Transport Policy",            "icon": "🚌"},
+    "Tourism & Heritage":            {"color": "#C2410C", "scheme": "Swadesh Darshan / PRASHAD",                 "icon": "🏛️"},
+    "Sports & Youth":                {"color": "#4338CA", "scheme": "Khelo India / NSDC",                        "icon": "⚽"},
+    "Markets & Local Economy":       {"color": "#854D0E", "scheme": "eNAM / Gramin Haat Programme",              "icon": "🛒"},
+    "Governance & Public Services":   {"color": "#374151", "scheme": "Digital India / e-Gram Swaraj",             "icon": "📑"},
 }
 
 
@@ -241,7 +241,7 @@ def _build_recommendations(
         recs.append({
             "id": f"water_{vname}",
             "title": f"Install RO Water Plant — {vname.title()}",
-            "category": "Water Supply",
+            "category": "Drinking Water",
             "village": vname.title(),
             "location": f"{vname.title()}, {district.title()}, {state.title()}",
             "problem": (
@@ -262,7 +262,7 @@ def _build_recommendations(
             "priority": _priority_label(score),
             "priority_color": _priority_color(_priority_label(score)),
             "estimated_cost_lakh": 18,
-            **CATEGORY_META["Water Supply"],
+            **CATEGORY_META["Drinking Water"],
         })
 
     # Uncovered habitations
@@ -277,7 +277,7 @@ def _build_recommendations(
         recs.append({
             "id": "water_coverage_hab",
             "title": f"Extend JJM Pipeline to {len(uncovered_habs)} Uncovered Habitations",
-            "category": "Water Supply",
+            "category": "Drinking Water",
             "village": ", ".join(panchayats[:3]) or district.title(),
             "location": f"{district.title()}, {state.title()}",
             "problem": (
@@ -298,7 +298,7 @@ def _build_recommendations(
             "priority": _priority_label(score),
             "priority_color": _priority_color(_priority_label(score)),
             "estimated_cost_lakh": round(len(uncovered_habs) * 4.5, 0),
-            **CATEGORY_META["Water Supply"],
+            **CATEGORY_META["Drinking Water"],
         })
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -386,7 +386,7 @@ def _build_recommendations(
         recs.append({
             "id": f"road_{r.id}",
             "title": f"Pave Road: {r.road_name}",
-            "category": "Roads",
+            "category": "Roads & Transport",
             "village": (r.habitation_name or r.block_name or district).title(),
             "location": f"{(r.habitation_name or r.block_name or district).title()}, {district.title()}, {state.title()}",
             "problem": (
@@ -409,7 +409,7 @@ def _build_recommendations(
             "priority": _priority_label(score),
             "priority_color": _priority_color(_priority_label(score)),
             "estimated_cost_lakh": cost_lakh,
-            **CATEGORY_META["Roads"],
+            **CATEGORY_META["Roads & Transport"],
         })
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -459,7 +459,7 @@ def _build_recommendations(
             recs.append({
                 "id": f"road_va_{va.id}",
                 "title": f"Build All-Weather Road — {vname}",
-                "category": "Roads",
+                "category": "Roads & Transport",
                 "village": vname,
                 "location": f"{vname}, {va.sub_district or district}, {district.title()}, {state.title()}",
                 "problem": (
@@ -479,7 +479,7 @@ def _build_recommendations(
                 "priority": _priority_label(score),
                 "priority_color": _priority_color(_priority_label(score)),
                 "estimated_cost_lakh": max(10, round(pop / 400 * 12, 0)),
-                **CATEGORY_META["Roads"],
+                **CATEGORY_META["Roads & Transport"],
             })
 
         # Sanitation / drainage gap
@@ -493,7 +493,7 @@ def _build_recommendations(
             recs.append({
                 "id": f"san_{va.id}",
                 "title": f"Build Drainage Network & Sanitation Facility — {vname}",
-                "category": "Sanitation",
+                "category": "Sanitation & Waste Management",
                 "village": vname,
                 "location": f"{vname}, {va.sub_district or district}, {district.title()}, {state.title()}",
                 "problem": (
@@ -514,7 +514,7 @@ def _build_recommendations(
                 "priority": _priority_label(score),
                 "priority_color": _priority_color(_priority_label(score)),
                 "estimated_cost_lakh": max(8, round(pop / 300 * 5, 1)),
-                **CATEGORY_META["Sanitation"],
+                **CATEGORY_META["Sanitation & Waste Management"],
             })
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -546,7 +546,7 @@ def _build_recommendations(
         },
         {
             "id": "employment_district",
-            "cat": "Employment",
+            "cat": "Employment & Skill Development",
             "keywords": ["employment", "job", "work", "livelihood", "skill", "labour", "unemployment"],
             "title": f"Skill Development Centre & Employment Drive — {district.title()}",
             "problem": (
@@ -606,9 +606,9 @@ def _build_recommendations(
         },
         {
             "id": "women_district",
-            "cat": "Women & Child",
+            "cat": "Women & Child Welfare",
             "keywords": ["women", "child", "anganwadi", "poshan", "nutrition", "girl", "maternity", "mahila"],
-            "title": f"Women Empowerment & Child Nutrition Drive — {district.title()}",
+            "title": f"Women Empowerment & Child Welfare Nutrition Drive — {district.title()}",
             "problem": (
                 f"Anganwadi centres in {district.title()} are understaffed and under-resourced. "
                 f"Child malnutrition and teenage anaemia rates are above national average."
@@ -646,7 +646,7 @@ def _build_recommendations(
         },
         {
             "id": "disability_district",
-            "cat": "Disability",
+            "cat": "Disability & Accessibility",
             "keywords": ["disability", "handicapped", "accessible", "ramp", "divyang", "blind", "deaf"],
             "title": f"Accessible Infrastructure for Persons with Disabilities — {district.title()}",
             "problem": (
@@ -745,6 +745,26 @@ def _build_recommendations(
             "beneficiaries_per_complaint": 400,
         },
         {
+            "id": "digital_connectivity_district",
+            "cat": "Digital Connectivity",
+            "keywords": ["internet", "broadband", "mobile", "network", "signal", "digital", "wifi", "telecom"],
+            "title": f"Digital Connectivity & Broadband Expansion — {district.title()}",
+            "problem": (
+                f"Rural blocks and remote panchayats in {district.title()} suffer from poor mobile network "
+                f"signals and lack of high-speed broadband connectivity, hindering education and online e-services."
+            ),
+            "why_chosen": (
+                f"Citizen complaints highlight cellular dark zones and lack of internet access. "
+                f"National Broadband Mission goals require 100% optical fibre linkage to Gram Panchayats."
+            ),
+            "how_to_fix": (
+                f"Install 4G/5G telecom towers in shadow zones under USOF and lay FTTH optical fibre cables "
+                f"to all Gram Panchayats under BharatNet Project."
+            ),
+            "estimated_cost_lakh": 95,
+            "beneficiaries_per_complaint": 450,
+        },
+        {
             "id": "transport_district",
             "cat": "Public Transport",
             "keywords": ["bus", "transport", "auto", "rickshaw", "train", "station", "commute", "route"],
@@ -766,7 +786,7 @@ def _build_recommendations(
         },
         {
             "id": "tourism_district",
-            "cat": "Tourism",
+            "cat": "Tourism & Heritage",
             "keywords": ["tourism", "heritage", "temple", "monument", "tourist", "pilgrimage", "culture"],
             "title": f"Heritage & Tourism Infrastructure Development — {district.title()}",
             "problem": (
@@ -786,7 +806,7 @@ def _build_recommendations(
         },
         {
             "id": "sports_district",
-            "cat": "Sports",
+            "cat": "Sports & Youth",
             "keywords": ["sports", "playground", "youth", "stadium", "gym", "khelo", "cricket", "kabaddi"],
             "title": f"Sports Infrastructure & Youth Programme — {district.title()}",
             "problem": (
@@ -806,7 +826,7 @@ def _build_recommendations(
         },
         {
             "id": "markets_district",
-            "cat": "Markets",
+            "cat": "Markets & Local Economy",
             "keywords": ["market", "shop", "bazaar", "haat", "trader", "vendor", "price", "mandi"],
             "title": f"Rural Market & Agri-Haat Development — {district.title()}",
             "problem": (
@@ -826,9 +846,9 @@ def _build_recommendations(
         },
         {
             "id": "governance_district",
-            "cat": "Governance",
+            "cat": "Governance & Public Services",
             "keywords": ["governance", "certificate", "ration", "document", "office", "official", "caste", "bpl", "corruption", "ration card"],
-            "title": f"Digital Governance & e-Services Outreach — {district.title()}",
+            "title": f"Digital Governance & e-Services e-Services Outreach — {district.title()}",
             "problem": (
                 f"Citizens in {district.title()} face delays in obtaining government certificates, "
                 f"ration cards, and BPL/caste documents due to manual, non-digital processes."
@@ -865,7 +885,7 @@ def _build_recommendations(
             "why_chosen": domain["why_chosen"],
             "how_to_fix": domain["how_to_fix"],
             "citizen_complaints": cc,
-            "beneficiaries": cc * domain.get("beneficiaries_per_complaint", 200),
+            "beneficiaries": (cc if cc > 0 else 1) * domain.get("beneficiaries_per_complaint", 200),
             "score": score,
             "priority": _priority_label(score),
             "priority_color": _priority_color(_priority_label(score)),

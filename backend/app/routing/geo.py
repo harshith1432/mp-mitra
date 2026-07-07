@@ -17,6 +17,50 @@ router = APIRouter()
 
 _GEOCODE_CACHE = {}
 
+def normalize_complaint_category(raw_cat: str) -> str:
+    if not raw_cat:
+        return "Governance & Public Services"
+    cat_lower = raw_cat.lower()
+    if "water" in cat_lower or "drinking" in cat_lower:
+        return "Drinking Water"
+    elif "road" in cat_lower or "transport" in cat_lower:
+        return "Roads & Transport"
+    elif "health" in cat_lower or "clinic" in cat_lower or "hospital" in cat_lower:
+        return "Healthcare"
+    elif "education" in cat_lower or "school" in cat_lower:
+        return "Education"
+    elif "electricity" in cat_lower or "power" in cat_lower:
+        return "Electricity"
+    elif "sanitation" in cat_lower or "drainage" in cat_lower or "waste" in cat_lower:
+        return "Sanitation & Waste Management"
+    elif "employment" in cat_lower or "job" in cat_lower or "skill" in cat_lower:
+        return "Employment & Skill Development"
+    elif "women" in cat_lower or "child" in cat_lower:
+        return "Women & Child Welfare"
+    elif "senior" in cat_lower or "elder" in cat_lower:
+        return "Senior Citizens"
+    elif "disability" in cat_lower or "access" in cat_lower:
+        return "Disability & Accessibility"
+    elif "safety" in cat_lower or "police" in cat_lower or "crime" in cat_lower:
+        return "Public Safety"
+    elif "disaster" in cat_lower or "flood" in cat_lower:
+        return "Disaster Management"
+    elif "urban" in cat_lower:
+        return "Urban Development"
+    elif "rural" in cat_lower:
+        return "Rural Development"
+    elif "digital" in cat_lower or "internet" in cat_lower or "broadband" in cat_lower:
+        return "Digital Connectivity"
+    elif "tourism" in cat_lower or "heritage" in cat_lower:
+        return "Tourism & Heritage"
+    elif "sports" in cat_lower or "youth" in cat_lower:
+        return "Sports & Youth"
+    elif "market" in cat_lower or "economy" in cat_lower or "shop" in cat_lower:
+        return "Markets & Local Economy"
+    elif "governance" in cat_lower or "public service" in cat_lower:
+        return "Governance & Public Services"
+    return "Governance & Public Services"
+
 def geocode_village_or_taluk(db_session, district_name: str, place_name: str) -> tuple:
     place_upper = place_name.strip().upper()
     cache_key = f"{district_name}_{place_upper}"
@@ -225,15 +269,7 @@ def get_heatmap_coordinates(
                     taluk_name = "Mandya Block"
                     panchayat_name = "Gram Panchayat"
 
-                category = data.get("category") or "General Need"
-                if category.lower() in ["water", "water & sanitation", "sanitation"]:
-                    category = "Water & Sanitation"
-                elif category.lower() in ["road", "roads & connectivity", "roads"]:
-                    category = "Roads & Connectivity"
-                elif category.lower() in ["health", "healthcare & welfare", "healthcare"]:
-                    category = "Healthcare & Welfare"
-                elif category.lower() in ["education", "education & schools", "schools"]:
-                    category = "Education & Schools"
+                category = normalize_complaint_category(data.get("category"))
 
                 priority = data.get("priority_score") or data.get("priority")
                 if not priority:
@@ -332,11 +368,7 @@ def get_heatmap_coordinates(
                     if diff.days > 0:
                         duration = f"{diff.days} days ago"
 
-                category = r.category or "General Need"
-                if category == "water":
-                    category = "Water & Sanitation"
-                elif category == "road":
-                    category = "Roads & Connectivity"
+                category = normalize_complaint_category(r.category)
 
                 coords.append({
                     "id": f"sql_{r.id}",

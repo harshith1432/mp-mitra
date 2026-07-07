@@ -48,7 +48,7 @@ def generate_candidate_projects(state: str, district: str, db: Session):
         candidates.append({
             "name": f"Pave Road: {r.road_name}",
             "village": r.habitation_name or "Constituency Block",
-            "category": "Roads & Connectivity",
+            "category": "Roads & Transport",
             "cost": round(cost, 2),
             "beneficiaries": pop,
             "demand": 85,
@@ -68,7 +68,7 @@ def generate_candidate_projects(state: str, district: str, db: Session):
         candidates.append({
             "name": f"RO Water Purification Plant ({w.quality_parameter} Treatment)",
             "village": w.village_name,
-            "category": "Water Supply",
+            "category": "Drinking Water",
             "cost": 1500000, # 15 Lakhs
             "beneficiaries": 1800,
             "demand": 95,
@@ -90,7 +90,7 @@ def generate_candidate_projects(state: str, district: str, db: Session):
             candidates.append({
                 "name": f"Upgrade Subcentre to Primary Health Centre (PHC) - {sub}",
                 "village": sub,
-                "category": "Healthcare & Clinics",
+                "category": "Healthcare",
                 "cost": 8500000, # 85 Lakhs
                 "beneficiaries": 8500,
                 "demand": 90,
@@ -113,7 +113,7 @@ def generate_candidate_projects(state: str, district: str, db: Session):
         candidates.append({
             "name": f"Build Classrooms & Add Staff: {s.school_name}",
             "village": s.village_name,
-            "category": "Education & Schools",
+            "category": "Education",
             "cost": 2500000, # 25 Lakhs
             "beneficiaries": s.total_students,
             "demand": 80,
@@ -125,7 +125,7 @@ def generate_candidate_projects(state: str, district: str, db: Session):
         
     # If no data found, generate defaults
     if not candidates:
-        categories = ["Water Supply", "Roads & Connectivity", "Healthcare & Clinics", "Education & Schools"]
+        categories = ["Drinking Water", "Roads & Transport", "Healthcare", "Education"]
         schemes = ["Jal Jeevan Mission", "PMGSY", "National Health Mission", "Sarva Shiksha Abhiyan"]
         for idx in range(15):
             cat = categories[idx % len(categories)]
