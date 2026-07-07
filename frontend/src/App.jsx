@@ -44,6 +44,54 @@ const complaintIcon = L.divIcon({
   className: '', iconSize: [14, 14], iconAnchor: [7, 7]
 });
 
+// Helper to render basic markdown response into beautiful formatted HTML
+const renderMarkdown = (text) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return lines.map((line, idx) => {
+    let cleanLine = line.trim();
+    if (!cleanLine) return <div key={idx} style={{ height: '8px' }} />;
+    
+    // Headers
+    if (cleanLine.startsWith('###')) {
+      return <h4 key={idx} style={{ margin: '12px 0 6px 0', fontSize: '15px', color: '#003B7A', fontWeight: 800 }}>{cleanLine.replace(/^###\s*/, '')}</h4>;
+    }
+    if (cleanLine.startsWith('####')) {
+      return <h5 key={idx} style={{ margin: '10px 0 4px 0', fontSize: '13px', color: '#1a1a1a', fontWeight: 700 }}>{cleanLine.replace(/^####\s*/, '')}</h5>;
+    }
+    if (cleanLine.startsWith('##')) {
+      return <h3 key={idx} style={{ margin: '14px 0 8px 0', fontSize: '16px', color: '#003B7A', fontWeight: 800 }}>{cleanLine.replace(/^##\s*/, '')}</h3>;
+    }
+    
+    // Bullet points
+    let isBullet = false;
+    if (cleanLine.startsWith('*') || cleanLine.startsWith('-')) {
+      isBullet = true;
+      cleanLine = cleanLine.replace(/^[\*\-]\s*/, '');
+    }
+    
+    // Bold parsing (**text**)
+    const parts = cleanLine.split('**');
+    const formattedLine = parts.map((part, i) => {
+      if (i % 2 === 1) {
+        return <strong key={i} style={{ color: '#003B7A', fontWeight: 700 }}>{part}</strong>;
+      }
+      return part;
+    });
+
+    if (isBullet) {
+      return (
+        <div key={idx} style={{ display: 'flex', gap: '8px', paddingLeft: '12px', marginBottom: '4px', alignItems: 'flex-start' }}>
+          <span style={{ color: '#FF6B1A' }}>•</span>
+          <span style={{ flex: 1 }}>{formattedLine}</span>
+        </div>
+      );
+    }
+    
+    return <p key={idx} style={{ margin: '0 0 6px 0' }}>{formattedLine}</p>;
+  });
+};
+
 // ============================================================
 // GOVERNMENT HEADER COMPONENT
 // ============================================================
@@ -3523,7 +3571,7 @@ export default function App() {
                         <span style={{ fontSize:'14px' }}>{msg.sender==='user'?'👤':'🤖'}</span>
                       </div>
                       <div style={{ padding:'12px 16px', borderRadius:'10px', background: msg.sender==='user'?'#EEF3FA':'white', border:'1px solid #DDE1E7', fontSize:'13px', color:'#1a1a1a', lineHeight:1.6, boxShadow:'0 1px 3px rgba(0,0,0,0.05)' }}>
-                        {msg.text}
+                        {renderMarkdown(msg.text)}
                       </div>
                     </div>
                   ))}
@@ -3804,7 +3852,7 @@ export default function App() {
                             </form>
                             {copilotHistory.slice(-1).map((m,i)=>(
                               m.sender==='bot' && m !== copilotHistory[0] && (
-                                <div key={i} style={{ marginTop:'14px', padding:'14px', background:'#F5F7FA', borderRadius:'8px', fontSize:'13px', color:'#1a1a1a', lineHeight:1.6, borderLeft:'3px solid #FF6B1A' }}>{m.text}</div>
+                                <div key={i} style={{ marginTop:'14px', padding:'14px', background:'#F5F7FA', borderRadius:'8px', fontSize:'13px', color:'#1a1a1a', lineHeight:1.6, borderLeft:'3px solid #FF6B1A' }}>{renderMarkdown(m.text)}</div>
                               )
                             ))}
                           </div>
@@ -4299,7 +4347,7 @@ export default function App() {
                               <span style={{ color:'white', fontSize:'14px' }}>{msg.sender==='user'?'MP':'AI'}</span>
                             </div>
                             <div style={{ padding:'14px 16px', borderRadius:'10px', background:msg.sender==='user'?'#EEF3FA':'white', border:'1px solid #DDE1E7', fontSize:'13px', color:'#1a1a1a', lineHeight:1.6 }}>
-                              {msg.text}
+                              {renderMarkdown(msg.text)}
                               {msg.sources && msg.sources.length > 0 && (
                                 <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'8px' }}>
                                   {msg.sources.map((s,si)=><span key={si} className="gov-badge gov-badge--blue" style={{ fontSize:'10px' }}>📂 {s}</span>)}
