@@ -47,6 +47,103 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * 2 * math.asin(math.sqrt(a))
 
 
+def resolve_districts_for_pc(db: Session, pc_code: str) -> tuple[Optional[str], List[str]]:
+    """
+    Resolves the state and list of districts that belong to a Parliamentary Constituency.
+    Uses ConstituencyVillageMap first, then falls back to smart name-matching against
+    districts and sub-districts in the schools table.
+    """
+    pc_code = pc_code.strip().upper()
+    
+    # 1. Try explicit ConstituencyVillageMap
+    mapping = (
+        db.query(
+            distinct(ConstituencyVillageMap.district_name),
+            ConstituencyVillageMap.state_name
+        )
+        .filter(ConstituencyVillageMap.pc_code == pc_code)
+        .all()
+    )
+    if mapping and any(r[0] for r in mapping):
+        state = next((r[1] for r in mapping if r[1]), None)
+        districts = list(set(r[0].upper() for r in mapping if r[0]))
+        return state, districts
+
+    # 2. Fall back to smart name-matching
+    pc = db.query(ParliamentaryConstituency).filter_by(pc_code=pc_code).first()
+    if not pc:
+        return None, []
+        
+    state = pc.state_name.strip().upper()
+    pc_name = pc.pc_name.strip().upper()
+    
+    # Common normalizations
+    normalizations = {
+        "BANGALORE": "BENGALURU",
+        "MYSORE": "MYSURU",
+        "BELGAUM": "BELAGAVI",
+        "GULBARGA": "KALABURAGI",
+        "BELLARY": "BALLARI",
+        "BIJAPUR": "VIJAYAPURA",
+        "CHIKMAGALUR": "CHIKKAMAGALURU",
+        "SHIMOGA": "SHIVAMOGGA",
+        "TUMKUR": "TUMAKURU",
+    }
+    
+    pc_name_norm = pc_name
+    for old, new in normalizations.items():
+        pc_name_norm = pc_name_norm.replace(old, new)
+        
+    # Check if any district name matches
+    matched_dists = (
+        db.query(distinct(School.district_name))
+        .filter(
+            func.upper(School.state_name) == state,
+            func.upper(School.district_name).like(f"%{pc_name_norm}%")
+        )
+        .all()
+    )
+    if matched_dists:
+        return state, [r[0].upper() for r in matched_dists]
+        
+    # Check if any sub-district matches
+    matched_sub = (
+        db.query(School.district_name)
+        .filter(
+            func.upper(School.state_name) == state,
+            func.upper(School.sub_district_name).like(f"%{pc_name_norm}%")
+        )
+        .first()
+    )
+    if matched_sub:
+        return state, [matched_sub[0].upper()]
+        
+    # Also check pincodes
+    from app.database.models import Pincode
+    matched_pin = (
+        db.query(Pincode.district)
+        .filter(
+            func.upper(Pincode.statename) == state,
+            (func.upper(Pincode.district).like(f"%{pc_name_norm}%") | 
+             func.upper(Pincode.officename).like(f"%{pc_name_norm}%"))
+        )
+        .first()
+    )
+    if matched_pin:
+        return state, [matched_pin[0].upper()]
+
+    # Fallback to first available district in state
+    first_dist = (
+        db.query(School.district_name)
+        .filter(func.upper(School.state_name) == state)
+        .first()
+    )
+    if first_dist:
+        return state, [first_dist[0].upper()]
+        
+    return state, []
+
+
 # ─── 1. List all PCs in a state ───────────────────────────────────────────────
 
 @router.get("/list")
@@ -137,13 +234,42 @@ def villages_in_pc(
     Example: GET /api/constituency-map/villages?pc_code=S14019
     """
     try:
+        pc_code_upper = pc_code.strip().upper()
         rows = (
             db.query(ConstituencyVillageMap)
-            .filter(ConstituencyVillageMap.pc_code == pc_code.strip().upper())
+            .filter(ConstituencyVillageMap.pc_code == pc_code_upper)
             .order_by(ConstituencyVillageMap.district_name, ConstituencyVillageMap.village_name)
             .limit(2000)
             .all()
         )
+        # Fallback to dynamically resolving villages from School table
+        if not rows:
+            state_up, district_set = resolve_districts_for_pc(db, pc_code_upper)
+            if state_up and district_set:
+                sample_schools = (
+                    db.query(School)
+                    .filter(
+                        func.upper(School.state_name) == state_up,
+                        func.upper(School.district_name).in_(district_set)
+                    )
+                    .limit(200)
+                    .all()
+                )
+                rows = [
+                    ConstituencyVillageMap(
+                        state_name=s.state_name,
+                        district_name=s.district_name,
+                        taluk_name=s.sub_district_name,
+                        panchayat_name=s.sub_district_name,
+                        village_name=s.village_name,
+                        pc_code=pc_code_upper,
+                        latitude=s.latitude,
+                        longitude=s.longitude,
+                        population=s.total_students * 5
+                    )
+                    for s in sample_schools if s.village_name
+                ]
+
         # Group by district for cleaner response
         by_district: dict = {}
         for r in rows:
@@ -155,13 +281,13 @@ def villages_in_pc(
                 "taluk": r.taluk_name,
                 "panchayat": r.panchayat_name,
                 "population": r.population,
-                "ac_code": r.ac_code,
-                "lat": r.latitude,
-                "lng": r.longitude,
+                "ac_code": r.ac_code or "N/A",
+                "lat": r.latitude or 0.0,
+                "lng": r.longitude or 0.0,
             })
         return {
             "status": "success",
-            "pc_code": pc_code,
+            "pc_code": pc_code_upper,
             "total_villages": len(rows),
             "districts_covered": list(by_district.keys()),
             "villages_by_district": by_district,
@@ -179,27 +305,14 @@ def schools_in_pc(
 ):
     """
     Returns all schools in a Parliamentary Constituency using ConstituencyVillageMap
-    to resolve which districts + taluks belong to this PC, then fetching matching schools.
-    Enables: 'Show all schools in Bangalore Rural constituency'
+    to resolve which districts belong to this PC, then fetching matching schools.
     """
     try:
-        # Step 1: Get all (district, taluk) pairs in this PC
-        mapping = (
-            db.query(
-                distinct(ConstituencyVillageMap.district_name),
-                ConstituencyVillageMap.taluk_name,
-                ConstituencyVillageMap.state_name,
-            )
-            .filter(ConstituencyVillageMap.pc_code == pc_code.strip().upper())
-            .all()
-        )
-        if not mapping:
+        state_up, district_set = resolve_districts_for_pc(db, pc_code)
+        if not state_up or not district_set:
             return {"status": "success", "pc_code": pc_code, "total": 0, "schools": []}
 
-        state_up = mapping[0][2].upper() if mapping[0][2] else None
-        district_set = list(set(r[0].upper() for r in mapping if r[0]))
-
-        # Step 2: Fetch schools in those districts
+        # Fetch schools in those districts
         schools = (
             db.query(School)
             .filter(
@@ -223,8 +336,8 @@ def schools_in_pc(
                     "students": s.total_students,
                     "teachers": s.total_teachers,
                     "ptr": round(s.total_students / s.total_teachers, 1) if s.total_teachers else None,
-                    "lat": s.latitude,
-                    "lng": s.longitude,
+                    "lat": s.latitude or 0.0,
+                    "lng": s.longitude or 0.0,
                 }
                 for s in schools
             ],
@@ -252,16 +365,7 @@ def deficit_summary_for_pc(
         if not pc:
             return {"status": "error", "error": f"PC code {pc_code} not found"}
 
-        mapping = (
-            db.query(
-                distinct(ConstituencyVillageMap.district_name),
-                ConstituencyVillageMap.state_name,
-            )
-            .filter(ConstituencyVillageMap.pc_code == pc_code.strip().upper())
-            .all()
-        )
-        district_set = list(set(r[0].upper() for r in mapping if r[0]))
-        state_up = mapping[0][1].upper() if mapping else None
+        state_up, district_set = resolve_districts_for_pc(db, pc_code)
 
         total_schools = total_students = total_teachers = 0
         total_clinics = 0
@@ -444,11 +548,31 @@ def resolve_district_to_pc(
         )
         pc_code_list = [r[0] for r in pc_codes]
 
-        pcs = (
-            db.query(ParliamentaryConstituency)
-            .filter(ParliamentaryConstituency.pc_code.in_(pc_code_list))
-            .all()
-        )
+        if not pc_code_list:
+            # Fallback: match PC names in state to district name
+            pcs = (
+                db.query(ParliamentaryConstituency)
+                .filter(
+                    func.upper(ParliamentaryConstituency.state_name) == state_up,
+                    (func.upper(ParliamentaryConstituency.pc_name).contains(dist_up) |
+                     func.upper(dist_up).contains(func.upper(ParliamentaryConstituency.pc_name)))
+                )
+                .all()
+            )
+            # If still nothing, return all PCs in state so selection is not locked
+            if not pcs:
+                pcs = (
+                    db.query(ParliamentaryConstituency)
+                    .filter(func.upper(ParliamentaryConstituency.state_name) == state_up)
+                    .all()
+                )
+        else:
+            pcs = (
+                db.query(ParliamentaryConstituency)
+                .filter(ParliamentaryConstituency.pc_code.in_(pc_code_list))
+                .all()
+            )
+
         return {
             "status": "success",
             "state": state_up,

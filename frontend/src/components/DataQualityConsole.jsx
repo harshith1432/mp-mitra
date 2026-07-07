@@ -10,9 +10,14 @@ export default function DataQualityConsole() {
 
   const fetchMetadata = () => {
     setLoading(true);
+    console.log("[DataQuality] Fetching quality metadata from:", `${API_BASE}/api/admin/quality/metadata`);
     fetch(`${API_BASE}/api/admin/quality/metadata`)
-      .then(res => res.json())
+      .then(res => {
+        console.log("[DataQuality] Fetch HTTP status:", res.status);
+        return res.json();
+      })
       .then(data => {
+        console.log("[DataQuality] Fetched data:", data);
         if (data.status === 'success') {
           setMetadata(data.metadata);
         } else {
@@ -21,6 +26,7 @@ export default function DataQualityConsole() {
         setLoading(false);
       })
       .catch(err => {
+        console.error("[DataQuality] Fetch error:", err);
         setError(err.message || 'Failed to connect to API');
         setLoading(false);
       });
