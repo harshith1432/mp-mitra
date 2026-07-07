@@ -1,469 +1,288 @@
-# 🇮🇳 MP MITRA: National AI-Driven Governance & Decision Intelligence Platform
+# 🇮🇳 MP MITRA — National AI Governance & Decision Intelligence Platform
 
-MP Mitra is a production-grade, multi-agent AI Decision Intelligence and Constituency Digital Twin Platform designed to bridge the gap between citizens and their elected Members of Parliament (MPs). It translates real-time citizen suggestions, infrastructure defect photographs, and Indic voice recordings into actionable, evidence-based project portfolios optimized against national guidelines and local budgets.
+> **Bridging Citizens and Parliament through Real-Time AI, Infrastructure Analysis & Geospatial Intelligence**
+
+MP Mitra is a production-grade, multi-agent AI Decision Intelligence and Constituency Digital Twin Platform designed to bridge the gap between citizens and their elected Members of Parliament (MPs). It translates real-time citizen suggestions, web-scraped local news, WhatsApp complaints, infrastructure deficit analysis, and government dataset cross-referencing into actionable, evidence-based project portfolios mapped to real village GPS coordinates.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)](https://fastapi.tiangolo.com/)
+[![React + Vite](https://img.shields.io/badge/React-Vite-purple.svg)](https://vitejs.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue.svg)](https://www.postgresql.org/)
 
 ---
 
-## 💻 Command Line Interface (CLI) Installation & Usage
+## 🗺️ Real-Time AI Priority Map
 
-MP Mitra features a professional command-line interface (`mpmitra`) to manage local services, databases, configurations, and software updates.
+The centrepiece of MP Mitra is the **AI Priority Map & Heat Index** — a live Leaflet-based geospatial view that automatically plots infrastructure problems at their **exact GPS locations** across the district. It shows 4 distinct data sources with different icons:
 
-### 1. Installation on Windows
+| Icon | Source | Color | Data Origin |
+|------|--------|-------|-------------|
+| 📍 | **Citizen Complaint** | 🔴 Red | Citizens submitting via MP Mitra Web Kiosk / App |
+| 💬 | **WhatsApp Report** | 🟢 Green | WhatsApp → Firestore pipeline |
+| 🤖 | **AI-Detected Deficit** | 🟣 Purple | Cross-referencing UDISE Schools, NHM Health Centres, JJM Habitations |
+| 📰 | **Web News Report** | 🟡 Amber | Web crawler scraping Deccan Herald, local news portals |
 
-#### Option A: 1-Click Automatic Installation (Recommended)
-Open **PowerShell** and run the following command to download, extract, install dependencies, compile the frontend dashboard, and register the `mpmitra` command in your PATH automatically:
+**Auto-refreshes every 30 seconds** — shows live source counts and last-updated timestamp in the legend.
+
+---
+
+## 🏗️ All 22 Problem Categories
+
+MP Mitra covers the complete spectrum of public governance categories:
+
+| # | Category | # | Category |
+|---|----------|---|----------|
+| 1 | 🚧 Roads & Transport | 12 | 👴 Senior Citizens |
+| 2 | 💧 Drinking Water | 13 | ♿ Disability & Accessibility |
+| 3 | 🏥 Healthcare | 14 | 🚓 Public Safety |
+| 4 | 🎓 Education | 15 | 🌪️ Disaster Management |
+| 5 | ⚡ Electricity | 16 | 🏙️ Urban Development |
+| 6 | 🌾 Agriculture | 17 | 🌾 Rural Development |
+| 7 | 💼 Employment & Skill Development | 18 | 💻 Digital Connectivity |
+| 8 | 🏠 Housing | 19 | 🚌 Public Transport |
+| 9 | 🚮 Sanitation & Waste Management | 20 | 🏛️ Tourism & Heritage |
+| 10 | 🌳 Environment | 21 | ⚽ Sports & Youth |
+| 11 | 👩 Women & Child Welfare | 22 | 🛒 Markets & Local Economy |
+
+---
+
+## 🚀 Key Features
+
+### 🗺️ AI Priority Map (Real-Time)
+- Plots citizen complaints, AI-detected infrastructure deficits, WhatsApp reports, and web-scraped news on a live Leaflet map
+- Real village GPS from UDISE school database, NHM health centres, and Nominatim OSM geocoding
+- **Zero synthetic/fake data** — every marker has a real location from real data
+- Auto-refresh every 30 seconds, source counts visible in legend
+- Click any marker for detailed AI-generated solution brief, matching government schemes, and MP action buttons
+
+### 📡 Web Scraper (Live Feed)
+- Continuously crawls local news portals (Deccan Herald, district portals) for Mandya/district-specific problem reports
+- All scraped items stored in PostgreSQL and immediately plotted on the map
+- Manual trigger: click "Web Scraping" in the dashboard to pull fresh data
+- Saves history so each session starts with accumulated data
+
+### 🤖 AI Infrastructure Analysis
+- **Education**: Flags schools with 0 teachers or student:teacher ratio > 40:1 (from UDISE data)
+- **Healthcare**: Flags rural Sub-centres/PHCs needing upgrade (from NHM data)
+- **Drinking Water**: Flags habitations with "Not Covered" / "Partially Covered" JJM status
+- Each flagged location shows exact GPS from government database
+
+### 💬 WhatsApp & Web Kiosk Integration
+- Citizens can submit complaints via Web Kiosk embedded in the platform
+- WhatsApp-submitted complaints (via Firestore) appear on the map with 💬 green pins
+- Shows citizen name, village, category, urgency level, and exact complaint text
+
+### 📊 Dashboard & Analytics
+- Live risk alert feed with severity tagging
+- Category-wise complaint breakdown charts
+- Constituency-level budget optimizer (MPLADS ₹5 crore allocation)
+- MP Copilot AI assistant for instant answers on constituency data
+- Gap Analysis across all 22 categories
+
+### 🔍 Recommendations Engine
+- Pulls from citizen complaints + infrastructure DB + scheme database
+- Matches each problem to the best Central/State government scheme
+- Generates explainable AI rationale with SHAP-style breakdown
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18 + Vite, Leaflet.js (maps), Vanilla CSS |
+| **Backend** | Python 3.11, FastAPI, SQLAlchemy ORM |
+| **Database** | PostgreSQL (primary), Firebase Firestore (citizen complaints) |
+| **AI/ML** | Gemini 2.0 Flash (via Google AI SDK), DBSCAN clustering |
+| **Geocoding** | UDISE DB → NHM DB → Nominatim OSM API (priority chain) |
+| **Web Scraping** | BeautifulSoup4 + Requests + Selenium |
+| **Auth** | Firebase Authentication |
+| **Deployment** | Render.com (backend), Firebase Hosting (frontend) |
+
+---
+
+## 💻 Installation
+
+### Option A: 1-Click Automatic Installation (Windows)
+
+Open **PowerShell as Administrator** and run:
 ```powershell
 powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/harshith1432/mp-mitra/main/install.ps1 | iex"
 ```
 
-#### Option B: Manual Installation
-1. **Download the Package:** Download the latest `mpmitra-windows-x64.zip` release from the GitHub Releases page.
-2. **Extract:** Extract the zip folder to a permanent location (e.g., `C:\Program Files\MPMitra` or `C:\Users\<User>\AppData\Local\Programs\MPMitra`).
-3. **Register PATH:** Add the folder path containing `mpmitra.exe` to your Windows System environment `PATH` variable.
-4. **Verify Installation:** Open Command Prompt or PowerShell from any directory and type:
-   ```bash
-   mpmitra version
-   ```
+### Option B: Manual Installation
 
+#### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL 15+
+- Git
+
+#### Steps
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/harshith1432/mp-mitra.git
+cd mp-mitra
+
+# 2. Install Python dependencies
+pip install -r backend/requirements.txt
+
+# 3. Install frontend dependencies
+cd frontend && npm install && cd ..
+
+# 4. Configure environment
+cp backend/.env.example backend/.env
+# Edit backend/.env with your PostgreSQL and Firebase credentials
+
+# 5. Start the platform (both frontend + backend)
+python run.py
+```
+
+Then open: **http://localhost:5173**
 
 ---
 
 ## 📦 Datasets Setup
 
-MP Mitra utilizes 6 national government datasets for demographic, infrastructure, health, and education planning across all Indian villages. Due to GitHub's file size limits, these datasets must be downloaded separately and placed in the project directory.
+MP Mitra uses 6 national government datasets. Due to GitHub file size limits, download separately:
 
-### 1. Download Datasets
-Download the optimized dataset package zip file (~121 MB) from Google Drive here:
-👉 **[DOWNLOAD MP MITRA DATASETS (ZIP)](https://drive.google.com/file/d/1-qEFBlpDg3jDZV7HwFefOB7O-LCTa0JI/view?usp=sharing)**
+👉 **[DOWNLOAD MP MITRA DATASETS (~121 MB)](https://drive.google.com/file/d/1-qEFBlpDg3jDZV7HwFefOB7O-LCTa0JI/view?usp=sharing)**
 
-### 2. Extract & Place Files
-Extract the contents of the downloaded `MPMitraDatasets.zip` file directly into the following path under your project root directory:
+Extract into:
 ```
 DATASET/Village Amenities/
-```
-Once placed, the directory structure should look like this:
-```
-DATASET/
-└── Village Amenities/
-    ├── Basic_habitation_info_2012_04_01.csv
-    ├── geocode_health_centre.csv
-    ├── pincode.csv
-    ├── road.csv
-    ├── school.csv
-    └── Water_quality_affected_habitation_2012_04_01.csv
+├── Basic_habitation_info_2012_04_01.csv     ← JJM water coverage
+├── geocode_health_centre.csv                 ← NHM health facility GPS
+├── pincode.csv                               ← All-India pincode directory
+├── road.csv                                  ← PMGSY road data
+├── school.csv                                ← UDISE school GPS + stats
+└── Water_quality_affected_habitation_2012_04_01.csv
 ```
 
-### 3. Active Datasets Summary
+### Dataset Summary
 
-| Dataset File | Description | Records | Key Columns Used |
-| :--- | :--- | :--- | :--- |
-| **`pincode.csv`** | All-India Pincode Directory | 150K+ | Pincode, District, State, Latitude, Longitude |
-| **`geocode_health_centre.csv`** | Geocoded Health Center Directory | 200K+ | Facility Name, Type, Subdistrict, Latitude, Longitude |
-| **`road.csv`** | PMGSY Road Network Database | 100K+ | Road Name, Surface Type, Connected Habitations, Cost, Length |
-| **`school.csv`** | National UDISE School Database | 1.5M+ | School Name, Village, Students Count, Teachers Count, Geolocations |
-| **`Basic_habitation_info_2012_04_01.csv`** | Census Habitation Demographics | 1.2M+ | Village, Habitation, SC/ST Population, General Population |
-| **`Water_quality_affected_habitation_2012_04_01.csv`** | Drinking Water Quality Contaminants | 100K+ | Habitation, Contaminant (Fluoride, Arsenic, Iron, etc.), Status |
-
----
-
-
-## 🛠️ CLI Reference Manual
-
-Manage your deployment using the following core CLI commands:
-
-| Command | Usage | Description |
-| :--- | :--- | :--- |
-| **`start`** | `mpmitra start` | Launches uvicorn backend server in the background and automatically opens the browser dashboard on http://localhost:8000. |
-| **`stop`** | `mpmitra stop` | Gracefully terminates all active background MP Mitra services. |
-| **`restart`**| `mpmitra restart` | Restarts background services. |
-| **`status`** | `mpmitra status` | Displays process ID, service health, active update channel, and database connection profiles. |
-| **`logs`** | `mpmitra logs -f` | Displays or streams real-time log outputs from the background uvicorn servers. |
-| **`config`** | `mpmitra config set GROQ_API_KEY <key>` | Safely reads/writes configuration settings. Sensitive keys (passwords, tokens, credentials) are stored encrypted. |
-| **`doctor`** | `mpmitra doctor` | Runs diagnostic health checks on read/write permissions, database connectivity, and external APIs. |
-| **`backup`** | `mpmitra backup <path>` | Archives current local SQLite database and config files to the target folder. |
-| **`restore`**| `mpmitra restore <path>`| Restores local databases and configurations from a backup directory. |
-| **`update`** | `mpmitra update` | Queries the GitHub Release servers and downloads update packages securely. |
-| **`reset`**  | `mpmitra reset` | Safely resets all local configurations, database files, and logs. |
+| Dataset | Records | Key Use |
+|---------|---------|---------|
+| `school.csv` | 1.5M+ schools | Teacher deficit detection, exact village GPS |
+| `geocode_health_centre.csv` | 170K+ facilities | Rural healthcare gap detection |
+| `Basic_habitation_info_2012_04_01.csv` | 600K+ habitations | Water coverage status, population data |
+| `pincode.csv` | 150K+ pincodes | District centroid fallback coordinates |
+| `road.csv` | 650K+ roads | PMGSY road status per habitation |
+| `Water_quality_affected_habitation_2012_04_01.csv` | 80K+ records | Fluoride/Iron/Salinity contamination alerts |
 
 ---
 
-## 🤖 Detailed AI Multi-Agent Architecture
+## 🔧 Environment Variables
 
-MP Mitra deploys a coordinated pipeline of intelligent, single-responsibility agents:
+Create `backend/.env`:
 
-```mermaid
-graph TD
-    A[Citizen / WhatsApp Ingestion] --> B[Indic Translation Agent]
-    B --> C[YOLOv11 Defect Agent]
-    C --> D[OCR / VLM Agent]
-    D --> E[TF-IDF Duplicate Agent]
-    E --> F[RAG Advisor Agent]
-    F --> G[ILP Knapsack Optimizer]
-    G --> H[SHAP Attribution Agent]
-```
-
-
-### AI pipeline Specifications
-
-| Agent / Model | AI Technology / Model Used | Input Data (What it takes) | Output Generated (What it gives) | Role in Constituency Decision Making |
-| :--- | :--- | :--- | :--- | :--- |
-| **🗣️ Indic Translation Agent** | Whisper / SeamlessM4T (STT) + Llama-3 (translation) | Voice recordings or text in any of 22 Scheduled Indian languages | Normalized English text transcription + Language Detected | Allows all citizens to submit suggestions in their native regional language. |
-| **👁️ YOLOv11 Defect Agent** | YOLOv11 (Fine-tuned Object Detection) | Citizen-uploaded photographs of infrastructure deficits | Bounding boxes, identified defect classes (`Pothole`, `Broken Light`, `Garbage`, etc.), & confidence | Automatically verifies the existence and severity of reported physical defects. |
-| **📄 OCR & VLM Scanner Agent** | Tesseract OCR / Qwen2-VL | Official PDF letters, meeting minutes, and village panchayat reports | Structured JSON containing requested budgets, project scopes, and locations | Ingests and registers official paper-based development requests automatically. |
-| **🔗 Clustering & Duplicate Agent** | TF-IDF Vectorizer + Cosine Similarity | Newly submitted raw complaint texts in the area | Grouped complaint clusters (similarity threshold $>0.55$) with support counts | Consolidates individual complaints into macro "Grievance Events" to prevent spam. |
-| **📖 RAG Policy Advisor Agent** | ChromaDB / Qdrant + SentenceTransformers + Llama-3.1 | Central policies (PMGSY, JJM, NHM, RTE) & MP natural language queries | Citation-backed advisory responses and matching local statistics | Guides the MP on whether a project matches national policy rules and local needs. |
-| **⚖️ Knapsack ILP Optimizer** | Mixed Integer Linear Programming (MILP via PuLP) | Candidate projects, budget limits, and importance weights | Mathematical globally-optimal project selection portfolio | Solves the best projects checklist that maximizes development impact under budget. |
-| **📊 SHAP Attribution Agent** | Shapley Additive Explanations (SHAP) | Prioritized project portfolios | Mathematical attribution percentages for each priority factor (Demand, Urgency, etc.) | Explains the exact mathematical reasoning behind every automated recommendation. |
-
----
-
-## 🌐 22 Scheduled Indian Languages Multi-Language Support
-
-MP Mitra features a complete localization switcher on every screen, allowing both citizens and representatives to toggle the interface dynamically between English and all **22 official languages of India** (Hindi, Kannada, Telugu, Tamil, Marathi, Gujarati, Bengali, Malayalam, Punjabi, Odia, Urdu, Assamese, Sanskrit, Kashmiri, Konkani, Nepali, Manipuri, Bodo, Dogri, Maithili, Santali, and Sindhi).
-
-* **How it works**: Uses static local dictionaries (zero-dependency, offline-first) with a global React `LanguageContext`.
-* **RTL Layouts**: Automatically mirrors layout direction (`dir="rtl"`) when switching to right-to-left scripts such as Urdu and Kashmiri.
-* **Persistent Settings**: Local storage remembers user language preferences across reloads.
-
----
-
-### 1. 🗣️ Indic Translation Agent
-* **File Location:** [translate_agent.py](file:///d:/projects%20softwares/hackthon%20pm/backend/app/agents/translate_agent.py)
-* **Functionality:** Translates text and audio inputs in 22 official Indic languages (Hindi, Kannada, Telugu, Tamil, Marathi, Gujarati, etc.) into English.
-* **How it works:** Triggers automatically during WhatsApp or Web Kiosk ingestion, ensuring subsequent processing agents receive clean, normalized English inputs.
-
-### 2. 👁️ YOLOv11 Defect Detection Agent
-* **File Location:** [vision_agent.py](file:///d:/projects%20softwares/hackthon%20pm/backend/app/agents/vision_agent.py)
-* **Functionality:** Scans citizen-uploaded pictures to identify, outline, and classify infrastructure deficits.
-* **Classes Detected:** `Pothole`, `Broken Street Light`, `Garbage Heap`, `Water Leakage`.
-
-### 3. 📄 OCR & VLM Document Scanner Agent
-* **File Location:** [ocr_agent.py](file:///d:/projects%20softwares/hackthon%20pm/backend/app/agents/ocr_agent.py)
-* **Functionality:** Scans scanned PDFs, meeting letters, and official panchayat reports submitted by citizen delegations.
-* **How it works:** Extracts core project names, budgets, and descriptions using high-accuracy OCR to automate document registration.
-
-### 4. 🔗 TF-IDF & Cosine Similarity Clustering Agent
-* **File Location:** [citizen.py](file:///d:/projects%20softwares/hackthon%20pm/backend/app/routing/citizen.py#L261-L289)
-* **Functionality:** Group incoming complaints to detect duplicates and track unified citizen interest volume.
-* **How it works:** Vectorizes incoming complaint texts against previous records in the district. If similarity $> 0.55$, it groups them under a shared cluster ID in Firestore.
-
-### 5. 📖 RAG Policy Advisor Agent
-* **File Location:** [copilot.py](file:///d:/projects%20softwares/hackthon%20pm/backend/app/routing/copilot.py)
-* **Functionality:** Answers MP questions regarding constituency needs, central guidelines (NHM, PMGSY, RTE), and local metrics.
-* **How it works:** Embeds government policy documents into ChromaDB/Qdrant vector stores, retrieves relevant context chunks, and provides evidence-backed investment advisories.
-
-### 6. ⚖️ Knapsack ILP Budget Optimizer Agent
-* **File Location:** [prioritize.py](file:///d:/projects%20softwares/hackthon%20pm/backend/app/routing/prioritize.py)
-* **Functionality:** Solves the optimal project selection portfolio under the MP's budget constraints.
-* **How it works:** Runs binary (0-1) Integer Linear Programming using the `pulp` library to maximize development impact weight.
-
-### 7. 📊 SHAP Explainable AI Attribution Agent
-* **File Location:** [prioritize.py](file:///d:/projects%20softwares/hackthon%20pm/backend/app/routing/prioritize.py#L183-L191)
-* **Functionality:** Computes Shapley additive attribution values to explain why a project was prioritized.
-* **How it works:** Quantifies the individual percentage weights of Citizen Demand, Urgency, Neglect, and Cost factors to provide transparent mathematical reasoning.
-
----
-
-## 🌐 Real-Time Crawler & Offline Data Unification Architecture
-
-This architecture details how the real-time web crawler, offline government databases, RAG retrieval system, and Firebase synchronizer merge to power the MP MITRA digital twin, dashboard, and geospatial map interfaces.
-
-### 🗺️ System Architecture Flowchart
-
-```mermaid
-graph TD
-    %% Scraped Web Data Sources
-    subgraph Web_Scraper [Real-Time Web Scraper]
-        RSS[Google News RSS Feed]
-        TND[Scraped Government Tenders]
-        SCH[myscheme.gov.in RSS/Webpages]
-    end
-
-    %% Offline Datasets
-    subgraph Offline_Data [Physical Datasets]
-        UDISE[UDISE School Demographics]
-        JJM[Jal Jeevan Mission Habitations]
-        PMGSY[PMGSY Road Construction]
-        WQ[Water Quality Database]
-    end
-
-    %% Storage & Search Engines
-    subgraph Storage [Databases & Intelligence Store]
-        PG[(PostgreSQL / SQLite Database)]
-        FB[(Firebase Firestore & RTDB)]
-        VS[(ChromaDB Vector Store)]
-    end
-
-    %% Backend Services
-    subgraph Backend [FastAPI API Routers]
-        CR[crawler_rt_stages.py / crawler_manager.py]
-        CO[copilot.py - Conversational Agent]
-        RA[rag_agent.py - RAG Search Engine]
-        RE[recommendations.py - Priority Engine]
-        GE[geo.py - Geospatial API Router]
-    end
-
-    %% Frontend App
-    subgraph Client [React Digital Twin Interface]
-        DB_WDG[Dashboard Widgets: Health Score, Gaps, Risk Alerts]
-        LF_MAP[Leaflet Geospatial Map Interface]
-        CO_AI[MP Copilot Chat Interface]
-    end
-
-    %% Data Connections
-    RSS -->|Parse articles| CR
-    TND -->|Parse tenders| CR
-    SCH -->|Parse schemes| CR
-    CR -->|Store crawled_news/tenders/schemes| PG
-    CR -->|Sync alerts| FB
-
-    UDISE -->|Bulk import| PG
-    JJM -->|Bulk import| PG
-    PMGSY -->|Bulk import| PG
-    WQ -->|Bulk import| PG
-
-    PG -->|Feed text items| VS
-    
-    %% API Services
-    PG -->|Read infrastructure details| RE
-    FB -->|Read citizen complaints| RE
-    RE -->|Calculate composite priorities| GE
-    
-    GE -->|Heatmap data & AI recommended pins| LF_MAP
-    GE -->|/expand-intelligence POST RAG Rerank| RA
-    RA -->|Vector search| VS
-    RA -->|Direct text fallback lookup| PG
-    
-    PG -->|Read constituency counts| Backend
-    Backend -->|/api/constituency/data| DB_WDG
-    
-    CO -->|Natural Language Conversational RAG| CO_AI
-```
-
-### 🔍 Core Data Unification Details
-
-#### 1. Real-time Aggregation
-- **Web Crawler**: Scrapes news articles, local tenders, and schemes in real-time, matching them to specific Gram Panchayats, Villages, and Taluks.
-- **Offline Datasets**: Loaded from public census, education (UDISE), health (NHM), water (JJM), and roads (PMGSY) data, georeferenced by Taluk/Block.
-
-#### 2. Algorithmic Merging
-- **Constituency Health Score**: 
-  \[
-  \text{Health Score} = \text{PTR Score} + \text{Clinic Coverage} + \text{Water Coverage} + \text{Road Completion} - \text{Active Crawled Alerts Penalty}
-  \]
-- **AI Recommendation Engine**: Scans physical deficit datasets, clusters them with citizen suggestions, and generates recommended pins for the Leaflet map sidebar dynamically.
-- **Expand Intelligence RAG Hub**: Takes any map deficit location, queries ChromaDB embeddings for web-scraped context, and calls the LLM orchestrator to explain scheme fits, causes, and projected benefits.
-
----
-
-## ⚙️ Ingestion & Setup (Development Mode)
-
-### 1. Environment Variables
-Configure your database and API keys in `backend/.env`:
 ```env
-DATABASE_URL=postgresql://postgres:PASSWORD@localhost:5432/mp_mitra
-GROQ_API_KEY=gsk_your_groq_key
-GOOGLE_API_KEY=AIzaSy_your_gemini_key
-FIREBASE_SERVICE_ACCOUNT_JSON={...}
-```
+# PostgreSQL
+DATABASE_URL=postgresql://username:password@localhost:5432/mpmitra
 
-### 2. Running Local Dev Server
-Launch both frontend and backend concurrently using the root runner:
-```bash
-cd backend
-python run.py
-```
-* Note: During local development, the backend runs the APIs on port `8000`, while the frontend uses Vite's hot-reload server on port `5173` (requests proxy automatically).
+# Firebase (for Firestore citizen complaints + Auth)
+FIREBASE_CREDENTIALS_PATH=./mp-mitra-firebase-adminsdk.json
 
----
+# Google AI (Gemini)
+GOOGLE_API_KEY=your_gemini_api_key_here
 
-## 🚀 Production Deployment Guidelines
-
-In production, frontend compilation is treated as a **build-time step** rather than an application-startup step. This ensures that the FastAPI backend runs with zero dependency on Node.js at runtime, preventing crashes in serverless or containerized cloud platforms.
-
-If the frontend build (`frontend/dist`) is missing, the backend continues to start successfully, serving a styled diagnostic page for frontend routes instead of raising a `RuntimeError`.
-
-### 1. Render Deployment Config
-
-Configure your Render web service with these settings:
-* **Runtime**: `Python`
-* **Python Version**: `3.11.9`
-* **Build Command**:
-  ```bash
-  # Install Node.js locally inside the build environment (no root required)
-  mkdir -p $HOME/.node
-  curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz | tar -xJ --strip-components=1 -C $HOME/.node
-  export PATH=$HOME/.node/bin:$PATH
-
-  # Compile frontend
-  cd frontend
-  npm install
-  npm run build
-
-  # Compile backend
-  cd ../backend
-  pip install --upgrade pip
-  pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
-  ```
-* **Start Command**: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
-
-### 2. Railway Ingestion Config
-
-Railway uses Nixpacks to automatically detect project environments. Create a `nixpacks.toml` at the root of the project to tell Railway to setup both Node.js and Python for building:
-```toml
-[providers]
-providers = ["node", "python"]
-
-[phases.setup]
-nixPkgs = ["nodejs", "python311"]
-
-[phases.build]
-cmds = [
-  "cd frontend && npm install && npm run build",
-  "cd ../backend && pip install --upgrade pip && pip install -r requirements.txt"
-]
-```
-* **Start Command**: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
-
-### 3. Docker Container Build
-
-Use this multi-stage Dockerfile to build the frontend and serve it using Python:
-```dockerfile
-# --- Stage 1: Build Frontend ---
-FROM node:18-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
-
-# --- Stage 2: Serve Backend ---
-FROM python:3.11-slim
-WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY backend/requirements.txt ./backend/
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r backend/requirements.txt
-
-COPY backend/ ./backend/
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
-
-EXPOSE 8000
-ENV PORT=8000
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### 4. GitHub Actions CI/CD Pipeline
-
-Use this workflow snippet to validate frontend and backend compilation in your pull requests:
-```yaml
-name: Build and Validate
-on: [push]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Build Frontend
-        run: |
-          cd frontend
-          npm install
-          npm run build
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
-      - name: Build Backend
-        run: |
-          cd backend
-          pip install --upgrade pip
-          pip install -r requirements.txt
+# Optional: Nominatim geocoding user-agent
+GEOCODER_USER_AGENT=mp_mitra_platform_v2
 ```
 
 ---
 
-## 🏛️ Systems Architecture & Technical Manual
+## 📡 API Endpoints
 
-This section outlines the detailed systems integration, AI components, and data structures.
+### Geospatial
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/geo/heatmap` | Returns all map points (citizen + AI + news + WhatsApp) |
+| `GET` | `/api/geo/reverse` | Reverse geocode lat/lon to village/district |
+| `POST` | `/api/geo/expand-intelligence` | AI deep-dive report for a specific problem point |
 
-### 1. Data and Control Flow Diagram
+### Citizen Data
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/complaints/feed` | Live citizen complaint feed |
+| `POST` | `/api/complaints/submit` | Submit a new citizen complaint |
+| `GET` | `/api/recommendations/priorities` | AI-ranked priority projects |
 
-```mermaid
-graph TD
-    %% Client Interfaces
-    subgraph Clients [Client Layer]
-        FIREBASE_WEB[Firebase Web App: mp-mitra-7e6d9.web.app]
-        LOCAL_VITE[Local Vite Dev Server: localhost:5173]
-        CLI_BINARY[Local CLI Console Wrapper: mpmitra.exe]
-    end
+### Web Crawler
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/admin/crawler/scrape-one` | Scrape one news article |
+| `POST` | `/api/admin/crawler/start` | Start continuous crawler |
+| `POST` | `/api/admin/crawler/stop` | Stop crawler |
+| `GET` | `/api/admin/crawler/status` | Crawler status |
 
-    %% Routing & API Gateway
-    subgraph Gateway [API Layer - FastAPI]
-        ROUTE_CITIZEN[citizen.py - Complaint Ingestion]
-        ROUTE_MAP[geo.py - Geospatial heatmap & recommended pins]
-        ROUTE_COPI[copilot.py - Chat & Search API]
-        ROUTE_OPT[prioritize.py - PuLP ILP Optimization & SHAP]
-    end
+### Constituency
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/constituency-map/list` | List all constituencies |
+| `GET` | `/api/constituency-map/data` | Constituency data for a district |
+| `GET` | `/api/data-quality/scores` | Dataset quality metrics |
 
-    %% Database & Vectors
-    subgraph Storage [Persistence Layer]
-        PG[(PostgreSQL / SQLite Database)]
-        FIRESTORE[(Firebase Cloud Firestore)]
-        CHROMA[(ChromaDB Vector Store)]
-    end
+---
 
-    %% AI Pipeline
-    subgraph AI_Agents [Multi-Agent Reasoning Core]
-        YOLO[YOLOv11 Object Defect Classifier]
-        VLM[Qwen2-VL / Tesseract Document OCR]
-        RAG[SentenceTransformers Policy Advisor]
-        SHAP[SHAP Explainable AI Attribution]
-    end
+## 🗺️ How the Map Gets Real Coordinates
 
-    %% Interactions
-    FIREBASE_WEB & LOCAL_VITE & CLI_BINARY -->|HTTPS API Requests / CORS Verified| Gateway
-    
-    Gateway -->|Read/Write| Storage
-    ROUTE_CITIZEN -->|Image scan| YOLO
-    ROUTE_CITIZEN -->|Document scan| VLM
-    ROUTE_COPI -->|Embeddings Query| CHROMA
-    ROUTE_OPT -->|Feature Importance| SHAP
+**Geocoding priority chain** (no random data at any step):
+
+```
+Village Name (e.g. "Katteri")
+    ↓
+1. UDISE School DB — exact GPS if school exists in that village
+    ↓ not found
+2. NHM Health Centre DB — GPS from health facility in same area
+    ↓ not found
+3. Habitation DB → nearest school in same village
+    ↓ not found
+4. Nominatim OSM API → "Katteri, Mandya district, Karnataka, India"
+    ↓ not found
+5. Pincode table district centroid (fixed, no noise)
+    ↓ not found
+6. Hard-coded Karnataka district centres
 ```
 
-### 2. Deep-Dive AI Pipeline Specifications
+---
 
-The platform is powered by specialized AI agents running on the backend:
+## 🤝 Contributing
 
-* ** Indic Translation Agent**: Whisper (STT) + Llama-3.1 model. Translates voice notes and regional text inputs from 22 official Indic languages into standardized English.
-* ** YOLOv11 Object Defect Agent**: Fine-tuned computer vision model. Scans photos uploaded by citizens (potholes, garbage, broken streetlights) to output coordinate locations and damage class categories.
-* ** OCR & VLM document Scanner**: Qwen2-VL and Tesseract OCR model. Instantly ingests papers, official letters, and panchayat minutes to parse scopes and connect budgets.
-* ** TF-IDF Duplicate Agent**: Pure Python Jaccard similarity and Cosine Similarity models. Consolidates similar citizen reports to trace local trend events and prevent spam.
-* ** RAG Policy Advisor Agent**: ChromaDB vector database and Llama model. Compares proposed projects against Central guidelines (JJM, PMGSY) and returns citation-backed advisories.
-* ** Knapsack ILP Portfolio Optimizer**: Mixed Integer Linear Programming (PuLP). Maximizes overall developmental impact score under the representative's budget constraints.
-* ** SHAP Explainable AI Agent**: Shapley additive explanations model. Breaks down and calculates percentage attributions (Demand, Urgency, Cost) explaining why a project was prioritized.
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/AmazingFeature`
+3. Commit your changes: `git commit -m 'Add some AmazingFeature'`
+4. Push to the branch: `git push origin feature/AmazingFeature`
+5. Open a Pull Request
 
-### 3. Database Schema & Government Sources
+---
 
-The platform synchronizes offline national datasets with crawled online data:
+## 📜 License
 
-* **`pincodes`**: All-India directory of pincodes mapping post offices to geospatial coordinates.
-* **`schools`**: National UDISE census. Tracks pupil-teacher ratios, school types, student strength, and coordinates.
-* **`roads`**: Pradhan Mantri Gram Sadak Yojana (PMGSY) database. Tracks connectivity, surface materials, and costs.
-* **`health_centres`**: National Health Portal directory. Evaluates clinic coverage density per 10,000 citizens.
-* **`habitations`**: Census population data combined with Jal Jeevan Mission (JJM) records. Tracks tap-water connectivity.
-* **`water_quality_records`**: Contaminant parameters (Fluoride, Arsenic, Salinity) tracked by gram panchayats.
-* **`village_amenities`**: Village amenities directories. Tracks general infrastructure gaps.
+MIT License — see [LICENSE](LICENSE) for details.
 
-### 4. Environments & Execution Modes
+---
 
-* **Local Machine Development**: The React UI runs via Vite dev server on port `5173` proxying `/api` calls. The backend runs FastAPI on port `8000` via Uvicorn. Local databases fall back automatically to SQLite (`mpmitra_fallback.db`).
-* **Production Cloud Hosting**: The React client is hosted on Firebase Hosting (delivering optimized static pages), and makes credential-safe CORS requests to the Python containers on Render.com. The backend queries data from a remote serverless PostgreSQL database on Neon.
-* **CLI Execution**: Packaged as a standalone command `mpmitra` using PyInstaller. The CLI initializes local databases, boots the Python Uvicorn engine, and manages logs, self-tests, and updates.
+## 👥 Team
+
+Built with ❤️ for the **India AI Hackathon 2026** — empowering India's 543 MPs with real-time AI decision intelligence.
+
+> *"Every citizen complaint becomes a data point. Every data point becomes a policy action."*
+
+---
+
+## 📸 Screenshots
+
+### AI Priority Map
+Real-time map showing citizen complaints (📍), WhatsApp reports (💬), AI-detected deficits (🤖), and web-scraped news (📰) at exact GPS coordinates across Mandya district, Karnataka.
+
+### Live Citizen Feed
+Real-time stream of citizen submissions from Web Kiosk and WhatsApp showing village name, category, urgency, and complaint text.
+
+### Active Risk Alerts
+AI-triaged alert panel showing Critical/High/Medium severity issues with population impact metrics.
+
+### Budget Optimizer
+MPLADS ₹5 crore allocation optimizer with scheme matching and cost-benefit analysis per village.
