@@ -280,31 +280,56 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
       const priorityNum = typeof p.priority === 'number' ? p.priority : (Number(p.priority) || 50);
       const color = getPriorityColor(priorityNum);
 
-      // Heat Circle
+      // Source-based icon emoji and border color
+      const source = p.source || 'ai_deficit';
+      const iconConfig = {
+        citizen_complaint: { emoji: '📍', bg: '#DC2626', border: '#fff', label: 'Citizen' },
+        whatsapp_report:   { emoji: '💬', bg: '#25D366', border: '#fff', label: 'WhatsApp' },
+        ai_deficit:        { emoji: '🤖', bg: '#7C3AED', border: '#fff', label: 'AI' },
+        scraped_news:      { emoji: '📰', bg: '#D97706', border: '#fff', label: 'News' },
+      };
+      const cfg = iconConfig[source] || iconConfig['ai_deficit'];
+
+      // Heat Circle (priority-colored)
       const circle = L.circle([p.lat, p.lon], {
         color: color,
         fillColor: color,
-        fillOpacity: 0.25,
-        radius: 350 + (priorityNum * 2)
+        fillOpacity: 0.18,
+        radius: 400 + (priorityNum * 3),
+        weight: 1
       }).addTo(circlesLayerRef.current);
 
-      // Custom Div Icon based on Priority Color
+      // Emoji icon marker
       const customIcon = L.divIcon({
         html: `<div style="
-          width: 14px; 
-          height: 14px; 
-          background: ${color}; 
-          border: 2px solid white; 
-          border-radius: 50%;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 10px ${color};
+          width: 30px; 
+          height: 30px; 
+          background: ${cfg.bg}; 
+          border: 2.5px solid ${cfg.border}; 
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
           cursor: pointer;
-        "></div>`,
+        "><span style="transform: rotate(45deg); font-size: 13px; line-height: 1;">${cfg.emoji}</span></div>`,
         className: '',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7]
+        iconSize: [30, 30],
+        iconAnchor: [15, 30]
       });
 
       const marker = L.marker([p.lat, p.lon], { icon: customIcon }).addTo(markersLayerRef.current);
+
+      // Tooltip on hover
+      marker.bindTooltip(
+        `<div style="font-family:Inter,sans-serif;font-size:12px;line-height:1.5;max-width:200px">
+          <strong>${cfg.label}</strong> — ${p.category}<br/>
+          📍 ${p.village}<br/>
+          <span style="color:${color};font-weight:700">Priority: ${priorityNum}</span>
+        </div>`,
+        { permanent: false, direction: 'top', offset: [0, -32] }
+      );
 
       const selectPoint = () => {
         setSelectedPoint(p);
@@ -318,8 +343,12 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
     // Auto-fit the map bounds to show all markers across the district
     if (points.length > 0) {
       try {
-        const latLngs = points.map(p => [p.lat, p.lon]);
-        mapInstanceRef.current.fitBounds(latLngs, { padding: [40, 40], maxZoom: 13 });
+        const latLngs = points
+          .filter(p => p && !isNaN(p.lat) && !isNaN(p.lon))
+          .map(p => [p.lat, p.lon]);
+        if (latLngs.length > 0) {
+          mapInstanceRef.current.fitBounds(latLngs, { padding: [50, 50], maxZoom: 12 });
+        }
       } catch (_) { /* ignore fitBounds errors */ }
     }
   }, [points, mapReady]);
@@ -584,10 +613,30 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
         gap: '8px',
         fontFamily: 'Inter, sans-serif'
       }}>
-        <div style={{ fontWeight: 800, borderBottom: '1px solid #E2E8F0', paddingBottom: '6px', marginBottom: '2px', fontFamily: 'Space Grotesk, sans-serif', color: '#003B7A' }}>🚨 Priority Deficit Index</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#C62B2B' }} /> Critical Deficit (Priority &ge; 85)</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#FB8C00' }} /> High Deficit (Priority 70 - 84)</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4CAF50' }} /> Moderate Deficit (Priority &lt; 70)</div>
+        <div style={{ fontWeight: 800, borderBottom: '1px solid #E2E8F0', paddingBottom: '6px', marginBottom: '2px', fontFamily: 'Space Grotesk, sans-serif', color: '#003B7A' }}>📍 Data Source</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '20px', height: '20px', background: '#DC2626', borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}><span style={{ transform: 'rotate(45deg)', fontSize: '9px' }}>📍</span></div>
+          Citizen Complaint
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '20px', height: '20px', background: '#25D366', borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}><span style={{ transform: 'rotate(45deg)', fontSize: '9px' }}>💬</span></div>
+          WhatsApp Report
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '20px', height: '20px', background: '#7C3AED', borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}><span style={{ transform: 'rotate(45deg)', fontSize: '9px' }}>🤖</span></div>
+          AI Detected Deficit
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '20px', height: '20px', background: '#D97706', borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}><span style={{ transform: 'rotate(45deg)', fontSize: '9px' }}>📰</span></div>
+          Web News Report
+        </div>
+        <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '6px', marginTop: '2px', fontWeight: 700, color: '#003B7A', fontFamily: 'Space Grotesk, sans-serif' }}>🚨 Priority Level</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#C62B2B', flexShrink: 0 }} /> Critical (≥ 85)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#FB8C00', flexShrink: 0 }} /> High (70–84)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4CAF50', flexShrink: 0 }} /> Moderate (&lt; 70)</div>
+        <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '6px', color: '#64748B', fontSize: '10px' }}>
+          {points.length > 0 ? `${points.length} issues mapped` : 'Loading map data…'}
+        </div>
       </div>
 
       {/* Sidebar Details Panel */}
