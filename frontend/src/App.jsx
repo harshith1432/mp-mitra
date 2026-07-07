@@ -2486,6 +2486,19 @@ export default function App() {
     setSelectedPCName(found ? found.pc_name : pc_code);
     localStorage.setItem('mp_pc_code', pc_code);
     localStorage.setItem('mp_pc_name', found ? found.pc_name : pc_code);
+
+    // Fetch and auto-set the first district covered by this PC
+    fetch(`${API_BASE}/api/constituency-map/villages?pc_code=${pc_code}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success' && data.districts_covered?.length > 0) {
+          const newDistrict = data.districts_covered[0];
+          setSelectedDistrict(newDistrict);
+          ss.set('mp_district', newDistrict);
+          localStorage.setItem('mp_district', newDistrict);
+        }
+      })
+      .catch(err => console.error(err));
   };
 
   // Persist state/district to both per-tab sessionStorage and cross-tab localStorage
@@ -3916,10 +3929,24 @@ export default function App() {
                 const sortedCategories = Object.entries(categoryStats)
                   .sort((a,b) => b[1] - a[1]);
 
+                const hasNoDbData = !loading && constituencyData && !constituencyData?.metrics?.population && !constituencyData?.metrics?.schools?.count && !constituencyData?.metrics?.roads?.count;
+
                 return (
                   <>
                     <GovPageBanner title={t('banner.dashboard.title')} subtitle={`${t('submit.district')}: ${selectedDistrict}, ${t('submit.state')}: ${selectedState} — ${t('banner.dashboard.subtitle')}`} breadcrumbs={[t('header.official_portal'), t('nav.home')]} />
                     <div style={{ padding:'24px 28px', display:'grid', gap:'20px' }}>
+                      {hasNoDbData && (
+                        <div style={{ background: '#FFF5F5', border: '1.5px solid #FEB2B2', borderRadius: '8px', padding: '16px 20px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '24px' }}>⚠️</span>
+                          <div>
+                            <h4 style={{ margin: 0, color: '#C53030', fontSize: '14px', fontWeight: 800 }}>No Ingested Data Found</h4>
+                            <p style={{ margin: '4px 0 0', color: '#742A2A', fontSize: '12px', fontWeight: 500, lineHeight: 1.4 }}>
+                              We couldn't find any Census, Schools, Roads, or JJM water records in your local database for <strong>{selectedDistrict}, {selectedState}</strong>.
+                              Please go to the <strong>Dataset Manager</strong> tab in the sidebar and click <strong>Ingest & Sync District</strong> to populate this district's data!
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       <div className="gov-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'14px' }}>
                         <StatCard label={t('dashboard.health_score')} value={`${constituencyData?.health_score||82}/100`} color="#003B7A" icon={Activity} />
                         <StatCard label={t('dashboard.ai_deficits')} value={`${totalDeficits}`} color="#FF6B1A" icon={Sparkles} sub={`${ptrDeficitCount} School / ${clinicDeficitCount} Clinic / ${crawledTenders} Scraped Tenders`} />
@@ -4172,10 +4199,24 @@ export default function App() {
                   {title:'School PTR > 36:1',loc:`${selectedDistrict} Rural Upper Primary`,level:'High',icon:'🏫',color:'#FF6B1A'},
                 ];
 
+                const hasNoDbData = !loading && constituencyData && !constituencyData?.metrics?.population && !constituencyData?.metrics?.schools?.count && !constituencyData?.metrics?.roads?.count;
+
                 return (
                   <>
                     <GovPageBanner title={t('nav.digital_twin')} subtitle={t('digital_twin.subtitle_pattern').replace('{{district}}', selectedDistrict).replace('{{state}}', selectedState)} breadcrumbs={[t('header.official_portal'), t('nav.digital_twin')]} />
                     <div style={{ padding:'24px 28px', display:'grid', gap:'20px' }}>
+                      {hasNoDbData && (
+                        <div style={{ background: '#FFF5F5', border: '1.5px solid #FEB2B2', borderRadius: '8px', padding: '16px 20px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '24px' }}>⚠️</span>
+                          <div>
+                            <h4 style={{ margin: 0, color: '#C53030', fontSize: '14px', fontWeight: 800 }}>No Ingested Data Found</h4>
+                            <p style={{ margin: '4px 0 0', color: '#742A2A', fontSize: '12px', fontWeight: 500, lineHeight: 1.4 }}>
+                              We couldn't find any Census, Schools, Roads, or JJM water records in your local database for <strong>{selectedDistrict}, {selectedState}</strong>.
+                              Please go to the <strong>Dataset Manager</strong> tab in the sidebar and click <strong>Ingest & Sync District</strong> to populate this district's data!
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       <div className="gov-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'14px' }}>
                         {[
                           {id:'population',label:t('dashboard.population'),value:popVal,icon:'👥',color:'#003B7A'},
