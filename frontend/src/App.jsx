@@ -7,6 +7,7 @@ import ConstituencyMap from './components/ConstituencyMap';
 import WhatsAppSimulator from './components/WhatsAppSimulator';
 import ScraperConsole from './components/ScraperConsole';
 import DatasetManagerConsole from './components/DatasetManagerConsole';
+import DataQualityConsole from './components/DataQualityConsole';
 import { useLanguage } from './context/LanguageContext';
 import API_BASE from './apiConfig';
 
@@ -3794,6 +3795,7 @@ export default function App() {
     {id:'admin', label:t('nav.admin'), icon:Upload},
     {id:'datasets', label:t('admin.datasets'), icon:Database},
     {id:'scraper', label:t('admin.scraper'), icon:Globe},
+    {id:'quality', label:'Data Quality Audit', icon:CheckCircle2},
     {id:'users', label:t('admin.users'), icon:Users},
     {id:'models', label:t('admin.system_health'), icon:Activity},
     {id:'audit', label:t('admin.audit'), icon:Database},
@@ -4812,6 +4814,10 @@ export default function App() {
 
               {activeTab === 'scraper' && (
                 <ScraperConsole />
+              )}
+
+              {activeTab === 'quality' && (
+                <DataQualityConsole />
               )}
 
 

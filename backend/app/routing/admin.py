@@ -501,3 +501,55 @@ async def sync_district_data(req: SyncDistrictRequest, db: Session = Depends(get
         }
     }
 
+
+# ─── Data Quality Layer Endpoints ──────────────────────────────────────────────
+
+@router.get("/quality/audit")
+def run_all_audits(db: Session = Depends(get_db)):
+    """
+    Triggers completeness, GPS, and mapping audits across all ingested databases.
+    Updates the dataset_metadata table and returns results.
+    """
+    try:
+        from app.database.quality_checker import audit_all_tables
+        results = audit_all_tables(db)
+        return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/quality/metadata")
+def get_quality_metadata(db: Session = Depends(get_db)):
+    """
+    Retrieves the saved data quality audit results from the database.
+    """
+    try:
+        from app.database.models import DatasetMetadata
+        import json
+        
+        rows = db.query(DatasetMetadata).order_by(DatasetMetadata.quality_score.desc()).all()
+        results = []
+        for r in rows:
+            details = {}
+            if r.details_json:
+                try:
+                    details = json.loads(r.details_json)
+                except Exception:
+                    pass
+            results.append({
+                "dataset_id": r.dataset_id,
+                "dataset_name": r.dataset_name,
+                "source_department": r.source_department,
+                "last_updated": r.last_updated_date.isoformat() if r.last_updated_date else None,
+                "total_records": r.num_records,
+                "version": r.version,
+                "missing_records": r.missing_values_count,
+                "coverage_level": r.coverage_level,
+                "quality_score": r.quality_score,
+                "details": details
+            })
+        return {"status": "success", "metadata": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+

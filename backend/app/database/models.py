@@ -303,3 +303,25 @@ class ConstituencyBudgetAllocation(Base):
     district     = Column(String(100), nullable=True)
     village      = Column(String(255), nullable=True)
     created_at   = Column(DateTime, default=func.now())
+
+
+# ─── Phase 2: Data Quality Layer ──────────────────────────────────────────────
+
+class DatasetMetadata(Base):
+    """
+    Metadata for tracking data quality, freshness, and ingestion history of datasets.
+    Helps official stakeholders audit the reliability of decision-support tables.
+    """
+    __tablename__ = "dataset_metadata"
+    dataset_id           = Column(String(100), primary_key=True)  # e.g. "schools_udise"
+    dataset_name         = Column(String(255))
+    source_department    = Column(String(150))
+    last_updated_date    = Column(DateTime, default=func.now())
+    num_records          = Column(Integer, default=0)
+    version              = Column(String(20), default="1.0.0")
+    missing_values_count = Column(Integer, default=0)
+    coverage_level       = Column(String(50))                      # National, State, District
+    quality_score        = Column(Float, default=100.0)           # 0 to 100
+    details_json         = Column(Text, nullable=True)             # JSON string storing detail breakdown
+    created_at           = Column(DateTime, default=func.now())
+

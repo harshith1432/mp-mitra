@@ -143,40 +143,109 @@ KARIMNAGAR_VILLAGES = [
     ("METPALLE",      "METPALLE",    "METPALLE GP",       None, "S29003", 18.8256, 78.5781, 18000),
 ]
 
+def fetch_all_constituencies():
+    """
+    Downloads and parses the 2019 Lok Sabha constituency list containing all 543 PCs.
+    Groups by ST_CODE and PC_CODE, keeping the highest voted candidate as the representative MP.
+    """
+    import urllib.request
+    import csv
+    import io
+
+    url = "https://raw.githubusercontent.com/pratapvardhan/Elections-India-2019/master/eci-2019.csv"
+    print(f"[Seed] Fetching all-India constituency dataset from: {url}")
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=15) as response:
+            csv_content = response.read().decode('utf-8')
+        
+        reader = csv.DictReader(io.StringIO(csv_content))
+        pcs = {}
+        for row in reader:
+            st_code = row.get("ST_CODE", "").strip()
+            pc_num = row.get("PC_CODE", "").strip()
+            state = row.get("State", "").strip().upper()
+            constituency = row.get("Constituency", "").strip().upper()
+            candidate = row.get("Candidate", "").strip()
+            party = row.get("Party", "").strip()
+            
+            if not st_code or not pc_num:
+                continue
+                
+            try:
+                pc_code = f"{st_code}{int(pc_num):02d}"
+            except ValueError:
+                pc_code = f"{st_code}{pc_num}"
+
+            pct_val = 0.0
+            try:
+                pct_val = float(row.get("%", 0.0))
+            except ValueError:
+                pass
+
+            if pc_code not in pcs:
+                pcs[pc_code] = {
+                    "pc_code": pc_code,
+                    "pc_name": constituency,
+                    "state_name": state,
+                    "mp_name": candidate,
+                    "mp_party": party,
+                    "max_pct": pct_val
+                }
+            else:
+                if pct_val > pcs[pc_code]["max_pct"]:
+                    pcs[pc_code]["mp_name"] = candidate
+                    pcs[pc_code]["mp_party"] = party
+                    pcs[pc_code]["max_pct"] = pct_val
+
+        print(f"[Seed] Successfully fetched {len(pcs)} unique Parliamentary Constituencies.")
+        return list(pcs.values())
+    except Exception as e:
+        print(f"[Seed] Warning: Failed to fetch online constituencies ({e}). Using local fallback.")
+        # Local fallback for Karnataka + Telangana
+        fallback = []
+        for entry in KARNATAKA_PCS:
+            fallback.append({
+                "pc_code": entry["pc_code"],
+                "pc_name": entry["pc_name"],
+                "state_name": "KARNATAKA",
+                "mp_name": entry["mp_name"],
+                "mp_party": entry["mp_party"]
+            })
+        for entry in TELANGANA_PCS:
+            fallback.append({
+                "pc_code": entry["pc_code"],
+                "pc_name": entry["pc_name"],
+                "state_name": "TELANGANA",
+                "mp_name": entry["mp_name"],
+                "mp_party": entry["mp_party"]
+            })
+        return fallback
+
 
 def seed(db):
     """Seed all constituency data. Safe to re-run (upserts by pc_code/ac_code)."""
+    pcs = fetch_all_constituencies()
+    print(f"[Seed] Seeding {len(pcs)} Parliamentary Constituencies into DB...")
 
-    print("[Seed] Seeding Parliamentary Constituencies (Karnataka + Telangana)...")
-
-    # Karnataka PCs
-    for entry in KARNATAKA_PCS:
+    for entry in pcs:
         existing = db.query(ParliamentaryConstituency).filter_by(pc_code=entry["pc_code"]).first()
         if not existing:
             db.add(ParliamentaryConstituency(
                 pc_code=entry["pc_code"],
                 pc_name=entry["pc_name"],
-                state_name="KARNATAKA",
+                state_name=entry["state_name"],
                 mp_name=entry.get("mp_name"),
                 mp_party=entry.get("mp_party"),
-                total_voters=1200000,
+                total_voters=1100000, # default average voters
             ))
-
-    # Telangana PCs
-    for entry in TELANGANA_PCS:
-        existing = db.query(ParliamentaryConstituency).filter_by(pc_code=entry["pc_code"]).first()
-        if not existing:
-            db.add(ParliamentaryConstituency(
-                pc_code=entry["pc_code"],
-                pc_name=entry["pc_name"],
-                state_name="TELANGANA",
-                mp_name=entry.get("mp_name"),
-                mp_party=entry.get("mp_party"),
-                total_voters=1000000,
-            ))
+        else:
+            # Update fields if already exists
+            existing.mp_name = entry.get("mp_name")
+            existing.mp_party = entry.get("mp_party")
 
     db.commit()
-    print(f"[Seed] ✅ {len(KARNATAKA_PCS) + len(TELANGANA_PCS)} PCs inserted.")
+    print("[Seed] PCs synchronized successfully.")
 
     # Assembly Constituencies
     print("[Seed] Seeding Assembly Constituencies...")
@@ -190,10 +259,10 @@ def seed(db):
                 state_name="KARNATAKA",
             ))
     db.commit()
-    print(f"[Seed] ✅ {len(MANDYA_ACS) + len(MYSORE_ACS)} Assembly Constituencies inserted.")
+    print(f"[Seed] {len(MANDYA_ACS) + len(MYSORE_ACS)} Assembly Constituencies inserted.")
 
     # Villages
-    print("[Seed] Seeding Constituency→Village mappings...")
+    print("[Seed] Seeding Constituency-Village mappings...")
     all_villages = [
         (v, "KARNATAKA", "MANDYA")   for v in MANDYA_VILLAGES
     ] + [
@@ -225,7 +294,7 @@ def seed(db):
             inserted += 1
 
     db.commit()
-    print(f"[Seed] ✅ {inserted} village-constituency mappings inserted.")
+    print(f"[Seed] {inserted} village-constituency mappings inserted.")
 
     # Sample MPLADS budget entries for Mandya
     print("[Seed] Seeding MPLADS budget allocations...")
@@ -253,8 +322,8 @@ def seed(db):
                 village=village,
             ))
     db.commit()
-    print("[Seed] ✅ MPLADS budget entries inserted.")
-    print("[Seed] 🎉 Constituency seed complete!")
+    print("[Seed] MPLADS budget entries inserted.")
+    print("[Seed] Constituency seed complete!")
 
 
 def seed_sqlite(conn):
@@ -271,24 +340,22 @@ def seed_sqlite(conn):
         
     p = "%s" if is_pg else "?"
     
-    # 1. Parliamentary Constituencies
-    print("[Seed SQL] Seeding Parliamentary Constituencies...")
-    for entry in KARNATAKA_PCS:
+    # Fetch constituencies
+    pcs = fetch_all_constituencies()
+    print(f"[Seed SQL] Seeding {len(pcs)} Parliamentary Constituencies...")
+    
+    for entry in pcs:
         cursor.execute(f"SELECT 1 FROM parliamentary_constituencies WHERE pc_code = {p}", (entry["pc_code"],))
         if not cursor.fetchone():
             cursor.execute(f"""
                 INSERT INTO parliamentary_constituencies (pc_code, pc_name, state_name, total_voters, mp_name, mp_party)
                 VALUES ({p}, {p}, {p}, {p}, {p}, {p})
-            """, (entry["pc_code"], entry["pc_name"], "KARNATAKA", 1200000, entry.get("mp_name"), entry.get("mp_party")))
+            """, (entry["pc_code"], entry["pc_name"], entry["state_name"], 1100000, entry.get("mp_name"), entry.get("mp_party")))
+        else:
+            cursor.execute(f"""
+                UPDATE parliamentary_constituencies SET mp_name = {p}, mp_party = {p} WHERE pc_code = {p}
+            """, (entry.get("mp_name"), entry.get("mp_party"), entry["pc_code"]))
         
-    for entry in TELANGANA_PCS:
-        cursor.execute(f"SELECT 1 FROM parliamentary_constituencies WHERE pc_code = {p}", (entry["pc_code"],))
-        if not cursor.fetchone():
-            cursor.execute(f"""
-                INSERT INTO parliamentary_constituencies (pc_code, pc_name, state_name, total_voters, mp_name, mp_party)
-                VALUES ({p}, {p}, {p}, {p}, {p}, {p})
-            """, (entry["pc_code"], entry["pc_name"], "TELANGANA", 1000000, entry.get("mp_name"), entry.get("mp_party")))
-
     # 2. Assembly Constituencies
     print("[Seed SQL] Seeding Assembly Constituencies...")
     for ac in MANDYA_ACS + MYSORE_ACS:
@@ -347,5 +414,3 @@ if __name__ == "__main__":
         seed(db)
     finally:
         db.close()
-
-
