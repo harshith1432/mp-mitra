@@ -24,10 +24,14 @@ def ensure_column_exists(db, table_name, column_name, column_type="VARCHAR(255)"
         cols = [row[1] for row in res]
     except Exception:
         try:
+            db.rollback()
             res = db.execute(text(f"SELECT column_name FROM information_schema.columns WHERE table_name='{table_name}'")).fetchall()
             cols = [row[0] for row in res]
         except Exception:
-            pass
+            try:
+                db.rollback()
+            except Exception:
+                pass
             
     if column_name not in cols:
         print(f"[Dynamic Schema] Adding column '{column_name}' to table '{table_name}'...")
@@ -36,6 +40,10 @@ def ensure_column_exists(db, table_name, column_name, column_type="VARCHAR(255)"
             db.commit()
         except Exception as e:
             print(f"[Dynamic Schema] Error adding column: {e}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
 
 try:
     from bs4 import BeautifulSoup

@@ -1200,7 +1200,7 @@ function RecommendationsPanel({ sName, dName }) {
 
   const summary = data?.summary || { HIGH: 0, MID: 0, LOW: 0, total: 0 };
   const recs    = data?.recommendations || [];
-  const allCats = ['ALL', ...new Set(recs.map(r => r.category))];
+  const allCats = ['ALL', ...Object.keys(CAT_ICONS)];
 
   return (
     <>
