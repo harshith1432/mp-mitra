@@ -201,6 +201,8 @@ def optimize_budget(req: OptimizeRequest, db: Session = Depends(get_db)):
         if norm_cost < 30:
             reasons.append("Highly cost-effective (budget-friendly)")
             
+        rationale = ", ".join(reasons) if reasons else "Selected for overall development value"
+            
         # Detailed explainable AI attributes
         location_full = f"{c['village']}, {dist_upper}, {state_upper}"
         
