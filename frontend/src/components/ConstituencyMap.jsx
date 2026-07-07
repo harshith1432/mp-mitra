@@ -113,8 +113,10 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
       });
   };
 
-  // 1. Fetch geocoded points (pass both state and district so the backend returns the right data)
-  useEffect(() => {
+  const [loadingPoints, setLoadingPoints] = useState(false);
+
+  const fetchPoints = () => {
+    setLoadingPoints(true);
     const districtParam = encodeURIComponent(activeDistrict);
     const stateParam    = encodeURIComponent(activeState);
     fetch(`${API_BASE}/api/geo/heatmap?district=${districtParam}&state=${stateParam}`)
@@ -123,14 +125,20 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
         if (Array.isArray(data) && data.length > 0) {
           setPoints(data);
         } else {
-          // No data yet — render an empty map centred on the district
           setPoints([]);
         }
+        setLoadingPoints(false);
       })
       .catch(err => {
         console.error('[Map Error] Fetching coordinates failed:', err);
         setPoints([]);
+        setLoadingPoints(false);
       });
+  };
+
+  // 1. Fetch geocoded points (pass both state and district so the backend returns the right data)
+  useEffect(() => {
+    fetchPoints();
   }, [activeDistrict, activeState]);
 
   // 2. Initialize Leaflet Map Instance — re-centre whenever district or state changes
@@ -395,6 +403,30 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
             </button>
           );
         })}
+        <div style={{ width: '1px', height: '20px', background: '#E2E8F0', alignSelf: 'center', margin: '0 4px' }} />
+        <button
+          onClick={fetchPoints}
+          disabled={loadingPoints}
+          title="Refresh Map Points"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            border: 'none',
+            background: 'transparent',
+            color: '#4A5568',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            fontFamily: 'Inter, sans-serif'
+          }}
+        >
+          <span>{loadingPoints ? '⏳' : '🔄'}</span>
+          <span>Refresh</span>
+        </button>
       </div>
 
       {/* Pegman / Street View Activate Button */}
