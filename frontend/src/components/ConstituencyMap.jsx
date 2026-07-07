@@ -152,8 +152,21 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
       // Initialize Layer Groups
       markersLayerRef.current = L.layerGroup().addTo(map);
       circlesLayerRef.current = L.layerGroup().addTo(map);
+
+      // Call invalidateSize after a short timeout to handle tab rendering sizing delays!
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+          mapInstanceRef.current.setView(center, 10);
+        }
+      }, 250);
     } else {
       mapInstanceRef.current.setView(center, 10);
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      }, 250);
     }
   }, [activeDistrict, activeState]);
 

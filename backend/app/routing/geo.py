@@ -62,6 +62,7 @@ def normalize_complaint_category(raw_cat: str) -> str:
     return "Governance & Public Services"
 
 def geocode_village_or_taluk(db_session, district_name: str, place_name: str) -> tuple:
+    import math
     place_upper = place_name.strip().upper()
     cache_key = f"{district_name}_{place_upper}"
     if cache_key in _GEOCODE_CACHE:
@@ -69,6 +70,8 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         
     # Helper to save and return
     def save_cache(lat, lon):
+        if lat is None or lon is None or math.isnan(lat) or math.isnan(lon):
+            return 20.5937, 78.9629
         _GEOCODE_CACHE[cache_key] = (lat, lon)
         return lat, lon
     
@@ -79,7 +82,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         School.latitude.isnot(None),
         School.latitude != 0.0
     ).first()
-    if school:
+    if school and school.latitude and not math.isnan(school.latitude) and school.longitude and not math.isnan(school.longitude):
         return save_cache(school.latitude, school.longitude)
         
     # 2. Search health centres
@@ -89,7 +92,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         HealthCentre.latitude.isnot(None),
         HealthCentre.latitude != 0.0
     ).first()
-    if hc:
+    if hc and hc.latitude and not math.isnan(hc.latitude) and hc.longitude and not math.isnan(hc.longitude):
         return save_cache(hc.latitude, hc.longitude)
 
     # 3. Search habitations block/village and fetch any nearby school coordinates in same block/village
@@ -106,7 +109,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
             School.latitude.isnot(None),
             School.latitude != 0.0
         ).first()
-        if school_near:
+        if school_near and school_near.latitude and not math.isnan(school_near.latitude) and school_near.longitude and not math.isnan(school_near.longitude):
             return save_cache(school_near.latitude, school_near.longitude)
 
     # 4. Generic DB-driven district centroid as fallback
@@ -118,8 +121,8 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
     ).limit(50).all()
     if any_school:
         import statistics
-        lats = [s.latitude for s in any_school if s.latitude]
-        lons = [s.longitude for s in any_school if s.longitude]
+        lats = [s.latitude for s in any_school if s.latitude and not math.isnan(s.latitude)]
+        lons = [s.longitude for s in any_school if s.longitude and not math.isnan(s.longitude)]
         if lats and lons:
             return save_cache(
                 statistics.mean(lats) + random.uniform(-0.2, 0.2),
@@ -132,7 +135,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
         Pincode.latitude.isnot(None),
         Pincode.latitude != 0.0
     ).first()
-    if ref:
+    if ref and ref.latitude and not math.isnan(ref.latitude) and ref.longitude and not math.isnan(ref.longitude):
         return save_cache(ref.latitude + random.uniform(-0.15, 0.15), ref.longitude + random.uniform(-0.15, 0.15))
             
     # 6. Absolute geographic centre of India as last resort
