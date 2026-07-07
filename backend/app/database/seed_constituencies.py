@@ -258,33 +258,49 @@ def seed(db):
 
 
 def seed_sqlite(conn):
-    """Seed ECI constituencies to SQLite using direct SQL connection."""
+    """Seed ECI constituencies using direct SQL connection (dialect-safe)."""
     cursor = conn.cursor()
     
+    is_pg = False
+    try:
+        # Check if conn is psycopg2 connection
+        if hasattr(conn, "closed") or "psycopg2" in str(type(conn)):
+            is_pg = True
+    except Exception:
+        pass
+        
+    p = "%s" if is_pg else "?"
+    
     # 1. Parliamentary Constituencies
-    print("[Seed SQLite] Seeding Parliamentary Constituencies...")
+    print("[Seed SQL] Seeding Parliamentary Constituencies...")
     for entry in KARNATAKA_PCS:
-        cursor.execute("""
-            INSERT OR IGNORE INTO parliamentary_constituencies (pc_code, pc_name, state_name, total_voters, mp_name, mp_party)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (entry["pc_code"], entry["pc_name"], "KARNATAKA", 1200000, entry.get("mp_name"), entry.get("mp_party")))
+        cursor.execute(f"SELECT 1 FROM parliamentary_constituencies WHERE pc_code = {p}", (entry["pc_code"],))
+        if not cursor.fetchone():
+            cursor.execute(f"""
+                INSERT INTO parliamentary_constituencies (pc_code, pc_name, state_name, total_voters, mp_name, mp_party)
+                VALUES ({p}, {p}, {p}, {p}, {p}, {p})
+            """, (entry["pc_code"], entry["pc_name"], "KARNATAKA", 1200000, entry.get("mp_name"), entry.get("mp_party")))
         
     for entry in TELANGANA_PCS:
-        cursor.execute("""
-            INSERT OR IGNORE INTO parliamentary_constituencies (pc_code, pc_name, state_name, total_voters, mp_name, mp_party)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (entry["pc_code"], entry["pc_name"], "TELANGANA", 1000000, entry.get("mp_name"), entry.get("mp_party")))
+        cursor.execute(f"SELECT 1 FROM parliamentary_constituencies WHERE pc_code = {p}", (entry["pc_code"],))
+        if not cursor.fetchone():
+            cursor.execute(f"""
+                INSERT INTO parliamentary_constituencies (pc_code, pc_name, state_name, total_voters, mp_name, mp_party)
+                VALUES ({p}, {p}, {p}, {p}, {p}, {p})
+            """, (entry["pc_code"], entry["pc_name"], "TELANGANA", 1000000, entry.get("mp_name"), entry.get("mp_party")))
 
     # 2. Assembly Constituencies
-    print("[Seed SQLite] Seeding Assembly Constituencies...")
+    print("[Seed SQL] Seeding Assembly Constituencies...")
     for ac in MANDYA_ACS + MYSORE_ACS:
-        cursor.execute("""
-            INSERT OR IGNORE INTO assembly_constituencies (ac_code, ac_name, pc_code, state_name)
-            VALUES (?, ?, ?, ?)
-        """, (ac["ac_code"], ac["ac_name"], ac["pc_code"], "KARNATAKA"))
+        cursor.execute(f"SELECT 1 FROM assembly_constituencies WHERE ac_code = {p}", (ac["ac_code"],))
+        if not cursor.fetchone():
+            cursor.execute(f"""
+                INSERT INTO assembly_constituencies (ac_code, ac_name, pc_code, state_name)
+                VALUES ({p}, {p}, {p}, {p})
+            """, (ac["ac_code"], ac["ac_name"], ac["pc_code"], "KARNATAKA"))
 
     # 3. Constituency-Village Mappings
-    print("[Seed SQLite] Seeding Constituency-Village mappings...")
+    print("[Seed SQL] Seeding Constituency-Village mappings...")
     all_villages = [
         (v, "KARNATAKA", "MANDYA")   for v in MANDYA_VILLAGES
     ] + [
@@ -296,13 +312,15 @@ def seed_sqlite(conn):
     ]
     
     for (vname, taluk, panchayat, ac_code, pc_code, lat, lng, pop), state, district in all_villages:
-        cursor.execute("""
-            INSERT OR IGNORE INTO constituency_village_map (state_name, district_name, taluk_name, panchayat_name, village_name, ac_code, pc_code, latitude, longitude, population)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (state, district, taluk, panchayat, vname, ac_code, pc_code, lat, lng, pop))
+        cursor.execute(f"SELECT 1 FROM constituency_village_map WHERE village_name = {p} AND district_name = {p}", (vname, district))
+        if not cursor.fetchone():
+            cursor.execute(f"""
+                INSERT INTO constituency_village_map (state_name, district_name, taluk_name, panchayat_name, village_name, ac_code, pc_code, latitude, longitude, population)
+                VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})
+            """, (state, district, taluk, panchayat, vname, ac_code, pc_code, lat, lng, pop))
 
     # 4. MPLADS budgets
-    print("[Seed SQLite] Seeding MPLADS budget allocations...")
+    print("[Seed SQL] Seeding MPLADS budget allocations...")
     sample_budget = [
         ("MPLADS", "Mandya PHC Building Construction",    1.20, "2024-25", "Utilized",  "MANDYA", "MANDYA"),
         ("MPLADS", "Maddur Road Repair PMGSY",            0.85, "2024-25", "Released",  "MANDYA", "MADDUR"),
@@ -312,13 +330,15 @@ def seed_sqlite(conn):
         ("MP LAD", "Pandavapura Drainage Layout",         0.65, "2024-25", "Pending",   "MANDYA", "PANDAVAPURA"),
     ]
     for scheme, project, amount, year, status, district, village in sample_budget:
-        cursor.execute("""
-            INSERT OR IGNORE INTO constituency_budget (pc_code, scheme_name, project_name, amount_cr, year, status, district, village)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, ("S08019", scheme, project, amount, year, status, district, village))
+        cursor.execute(f"SELECT 1 FROM constituency_budget WHERE project_name = {p} AND year = {p}", (project, year))
+        if not cursor.fetchone():
+            cursor.execute(f"""
+                INSERT INTO constituency_budget (pc_code, scheme_name, project_name, amount_cr, year, status, district, village)
+                VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})
+            """, ("S08019", scheme, project, amount, year, status, district, village))
         
     conn.commit()
-    print("[Seed SQLite] Constituency seed complete!")
+    print("[Seed SQL] Constituency seed complete!")
 
 
 if __name__ == "__main__":
@@ -327,4 +347,5 @@ if __name__ == "__main__":
         seed(db)
     finally:
         db.close()
+
 

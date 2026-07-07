@@ -1,7 +1,6 @@
 import os
 import csv
 import sys
-import sqlite3
 import time
 from pathlib import Path
 
@@ -9,6 +8,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from app.database.connection import engine, Base
 from app.database.dataset_manager import dataset_manager
 
 # Scan and extract dataset zip from workspace
@@ -17,183 +17,44 @@ root_dir = os.path.abspath(os.path.join(here, "..", "..", ".."))
 dataset_manager.import_local_datasets_from_workspace(root_dir)
 
 DATASET_DIR = dataset_manager.get_dataset_dir()
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "mpmitra_fallback.db")
+is_pg = "postgresql" in str(engine.url)
 
-def init_db(conn):
-    print("Creating tables in SQLite database...")
+def bulk_insert(cursor, table, cols, batch):
+    if is_pg:
+        from psycopg2.extras import execute_values
+        conflict_target = ""
+        if table == "schools":
+            conflict_target = "ON CONFLICT (udise_school_code) DO NOTHING"
+        elif table == "parliamentary_constituencies":
+            conflict_target = "ON CONFLICT (pc_code) DO NOTHING"
+        elif table == "assembly_constituencies":
+            conflict_target = "ON CONFLICT (ac_code) DO NOTHING"
+            
+        columns_str = ", ".join(cols)
+        query = f"INSERT INTO {table} ({columns_str}) VALUES %s {conflict_target}"
+        execute_values(cursor, query, batch)
+    else:
+        columns_str = ", ".join(cols)
+        placeholders = ", ".join(["?"] * len(cols))
+        query = f"INSERT OR IGNORE INTO {table} ({columns_str}) VALUES ({placeholders})"
+        cursor.executemany(query, batch)
+
+def clear_tables(conn):
+    print("Clearing existing table records...")
     cursor = conn.cursor()
-    
-    # 1. Pincodes
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS pincodes (
-        pincode VARCHAR(20) PRIMARY KEY,
-        circlename VARCHAR(150),
-        regionname VARCHAR(150),
-        divisionname VARCHAR(150),
-        officename VARCHAR(200),
-        officetype VARCHAR(50),
-        delivery VARCHAR(50),
-        district VARCHAR(150),
-        statename VARCHAR(150),
-        latitude REAL,
-        longitude REAL
-    )
-    """)
-    
-    # 2. Health Centres
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS health_centres (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        state_name VARCHAR(100),
-        district_name VARCHAR(100),
-        subdistrict_name VARCHAR(100),
-        facility_type VARCHAR(100),
-        facility_name VARCHAR(250),
-        facility_address TEXT,
-        latitude REAL,
-        longitude REAL,
-        active_flag VARCHAR(20),
-        location_type VARCHAR(50),
-        type_of_facility VARCHAR(100)
-    )
-    """)
-    
-    # 3. Roads
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS roads (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        road_name VARCHAR(250),
-        state_name VARCHAR(100),
-        district_name VARCHAR(100),
-        block_name VARCHAR(100),
-        habitation_name VARCHAR(250),
-        upgrade_or_new VARCHAR(50),
-        surface_type VARCHAR(100),
-        physical_status VARCHAR(100),
-        length REAL,
-        total_cost REAL,
-        population INTEGER
-    )
-    """)
-    
-    # 4. Schools
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS schools (
-        udise_school_code VARCHAR(50) PRIMARY KEY,
-        school_name VARCHAR(250),
-        state_name VARCHAR(100),
-        district_name VARCHAR(100),
-        sub_district_name VARCHAR(100),
-        village_name VARCHAR(150),
-        pincode VARCHAR(20),
-        school_category VARCHAR(150),
-        school_type VARCHAR(50),
-        total_teachers INTEGER,
-        total_students INTEGER,
-        latitude REAL,
-        longitude REAL
-    )
-    """)
-    
-    # 5. Habitations
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS habitations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        state_name VARCHAR(100),
-        district_name VARCHAR(100),
-        block_name VARCHAR(100),
-        panchayat_name VARCHAR(150),
-        village_name VARCHAR(150),
-        habitation_name VARCHAR(250),
-        sc_population INTEGER,
-        st_population INTEGER,
-        general_population INTEGER,
-        status VARCHAR(100),
-        year VARCHAR(20)
-    )
-    """)
-    
-    # 6. Water Quality
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS water_quality_records (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        state_name VARCHAR(100),
-        district_name VARCHAR(100),
-        block_name VARCHAR(100),
-        panchayat_name VARCHAR(150),
-        village_name VARCHAR(150),
-        habitation_name VARCHAR(250),
-        quality_parameter VARCHAR(250),
-        year VARCHAR(20)
-    )
-    """)
-    
-    # 7. Parliamentary Constituencies
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS parliamentary_constituencies (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        pc_code VARCHAR(10) UNIQUE,
-        pc_name VARCHAR(255),
-        state_name VARCHAR(100),
-        total_voters INTEGER,
-        mp_name VARCHAR(255),
-        mp_party VARCHAR(100),
-        mp_since VARCHAR(20),
-        area_sq_km REAL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
-    # 8. Assembly Constituencies
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS assembly_constituencies (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ac_code VARCHAR(10) UNIQUE,
-        ac_name VARCHAR(255),
-        pc_code VARCHAR(10),
-        state_name VARCHAR(100),
-        mla_name VARCHAR(255),
-        mla_party VARCHAR(100),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
-    # 9. Constituency Village Map
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS constituency_village_map (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        state_name VARCHAR(100),
-        district_name VARCHAR(100),
-        taluk_name VARCHAR(100),
-        panchayat_name VARCHAR(255),
-        village_name VARCHAR(255),
-        village_code VARCHAR(20),
-        ac_code VARCHAR(10),
-        pc_code VARCHAR(10),
-        latitude REAL,
-        longitude REAL,
-        population INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
-    # 10. Constituency Budget
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS constituency_budget (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        pc_code VARCHAR(10),
-        scheme_name VARCHAR(255),
-        project_name VARCHAR(255),
-        amount_cr REAL,
-        year VARCHAR(10),
-        status VARCHAR(50),
-        district VARCHAR(100),
-        village VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
+    tables = [
+        "pincodes", "health_centres", "roads", "schools",
+        "habitations", "water_quality_records", "parliamentary_constituencies",
+        "assembly_constituencies", "constituency_village_map", "constituency_budget"
+    ]
+    for t in tables:
+        try:
+            if is_pg:
+                cursor.execute(f"TRUNCATE TABLE {t} RESTART IDENTITY CASCADE")
+            else:
+                cursor.execute(f"DELETE FROM {t}")
+        except Exception as e:
+            pass
     conn.commit()
 
 def ingest_pincodes(conn):
@@ -205,7 +66,11 @@ def ingest_pincodes(conn):
     print("Ingesting Pincodes...")
     start = time.time()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM pincodes")
+    
+    cols = [
+        "pincode", "circlename", "regionname", "divisionname", "officename", 
+        "officetype", "delivery", "district", "statename", "latitude", "longitude"
+    ]
     
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         reader = csv.reader(f)
@@ -228,21 +93,13 @@ def ingest_pincodes(conn):
                 continue
                 
             if len(batch) >= 10000:
-                cursor.executemany("""
-                INSERT OR IGNORE INTO pincodes 
-                (pincode, circlename, regionname, divisionname, officename, officetype, delivery, district, statename, latitude, longitude)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, batch)
+                bulk_insert(cursor, "pincodes", cols, batch)
                 conn.commit()
                 batch = []
                 print(f"  Processed {count} pincodes...")
                 
         if batch:
-            cursor.executemany("""
-            INSERT OR IGNORE INTO pincodes 
-            (pincode, circlename, regionname, divisionname, officename, officetype, delivery, district, statename, latitude, longitude)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, batch)
+            bulk_insert(cursor, "pincodes", cols, batch)
             conn.commit()
             
     print(f"Finished Pincodes: {count} rows in {time.time() - start:.2f}s")
@@ -256,7 +113,11 @@ def ingest_health_centres(conn):
     print("Ingesting Health Centres...")
     start = time.time()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM health_centres")
+    
+    cols = [
+        "state_name", "district_name", "subdistrict_name", "facility_type", "facility_name", 
+        "facility_address", "latitude", "longitude", "active_flag", "location_type", "type_of_facility"
+    ]
     
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         reader = csv.reader(f)
@@ -280,20 +141,12 @@ def ingest_health_centres(conn):
                 continue
                 
             if len(batch) >= 10000:
-                cursor.executemany("""
-                INSERT INTO health_centres 
-                (state_name, district_name, subdistrict_name, facility_type, facility_name, facility_address, latitude, longitude, active_flag, location_type, type_of_facility)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, batch)
+                bulk_insert(cursor, "health_centres", cols, batch)
                 conn.commit()
                 batch = []
                 
         if batch:
-            cursor.executemany("""
-            INSERT INTO health_centres 
-            (state_name, district_name, subdistrict_name, facility_type, facility_name, facility_address, latitude, longitude, active_flag, location_type, type_of_facility)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, batch)
+            bulk_insert(cursor, "health_centres", cols, batch)
             conn.commit()
             
     print(f"Finished Health Centres: {count} rows in {time.time() - start:.2f}s")
@@ -307,7 +160,11 @@ def ingest_roads(conn):
     print("Ingesting Roads...")
     start = time.time()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM roads")
+    
+    cols = [
+        "road_name", "state_name", "district_name", "block_name", "habitation_name", 
+        "upgrade_or_new", "surface_type", "physical_status", "length", "total_cost", "population"
+    ]
     
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         reader = csv.reader(f)
@@ -330,21 +187,13 @@ def ingest_roads(conn):
                 continue
                 
             if len(batch) >= 10000:
-                cursor.executemany("""
-                INSERT INTO roads 
-                (road_name, state_name, district_name, block_name, habitation_name, upgrade_or_new, surface_type, physical_status, length, total_cost, population)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, batch)
+                bulk_insert(cursor, "roads", cols, batch)
                 conn.commit()
                 batch = []
                 print(f"  Processed {count} roads...")
                 
         if batch:
-            cursor.executemany("""
-            INSERT INTO roads 
-            (road_name, state_name, district_name, block_name, habitation_name, upgrade_or_new, surface_type, physical_status, length, total_cost, population)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, batch)
+            bulk_insert(cursor, "roads", cols, batch)
             conn.commit()
             
     print(f"Finished Roads: {count} rows in {time.time() - start:.2f}s")
@@ -358,7 +207,11 @@ def ingest_schools(conn):
     print("Ingesting Schools...")
     start = time.time()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM schools")
+    
+    cols = [
+        "udise_school_code", "school_name", "state_name", "district_name", "sub_district_name", 
+        "village_name", "pincode", "school_category", "school_type", "total_teachers", "total_students", "latitude", "longitude"
+    ]
     
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         reader = csv.reader(f)
@@ -390,21 +243,13 @@ def ingest_schools(conn):
                 continue
                 
             if len(batch) >= 10000:
-                cursor.executemany("""
-                INSERT OR IGNORE INTO schools 
-                (udise_school_code, school_name, state_name, district_name, sub_district_name, village_name, pincode, school_category, school_type, total_teachers, total_students, latitude, longitude)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, batch)
+                bulk_insert(cursor, "schools", cols, batch)
                 conn.commit()
                 batch = []
                 print(f"  Processed {count} schools...")
                 
         if batch:
-            cursor.executemany("""
-            INSERT OR IGNORE INTO schools 
-            (udise_school_code, school_name, state_name, district_name, sub_district_name, village_name, pincode, school_category, school_type, total_teachers, total_students, latitude, longitude)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, batch)
+            bulk_insert(cursor, "schools", cols, batch)
             conn.commit()
             
     print(f"Finished Schools: {count} rows in {time.time() - start:.2f}s")
@@ -418,7 +263,11 @@ def ingest_habitations(conn):
     print("Ingesting Habitations...")
     start = time.time()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM habitations")
+    
+    cols = [
+        "state_name", "district_name", "block_name", "panchayat_name", "village_name", 
+        "habitation_name", "sc_population", "st_population", "general_population", "status", "year"
+    ]
     
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         reader = csv.reader(f)
@@ -442,21 +291,13 @@ def ingest_habitations(conn):
                 continue
                 
             if len(batch) >= 10000:
-                cursor.executemany("""
-                INSERT INTO habitations 
-                (state_name, district_name, block_name, panchayat_name, village_name, habitation_name, sc_population, st_population, general_population, status, year)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, batch)
+                bulk_insert(cursor, "habitations", cols, batch)
                 conn.commit()
                 batch = []
                 print(f"  Processed {count} habitations...")
                 
         if batch:
-            cursor.executemany("""
-            INSERT INTO habitations 
-            (state_name, district_name, block_name, panchayat_name, village_name, habitation_name, sc_population, st_population, general_population, status, year)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, batch)
+            bulk_insert(cursor, "habitations", cols, batch)
             conn.commit()
             
     print(f"Finished Habitations: {count} rows in {time.time() - start:.2f}s")
@@ -470,7 +311,10 @@ def ingest_water_quality(conn):
     print("Ingesting Water Quality...")
     start = time.time()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM water_quality_records")
+    
+    cols = [
+        "state_name", "district_name", "block_name", "panchayat_name", "village_name", "habitation_name", "quality_parameter", "year"
+    ]
     
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         reader = csv.reader(f)
@@ -490,44 +334,35 @@ def ingest_water_quality(conn):
                 continue
                 
             if len(batch) >= 10000:
-                cursor.executemany("""
-                INSERT INTO water_quality_records 
-                (state_name, district_name, block_name, panchayat_name, village_name, habitation_name, quality_parameter, year)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, batch)
+                bulk_insert(cursor, "water_quality_records", cols, batch)
                 conn.commit()
                 batch = []
                 
         if batch:
-            cursor.executemany("""
-            INSERT INTO water_quality_records 
-            (state_name, district_name, block_name, panchayat_name, village_name, habitation_name, quality_parameter, year)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, batch)
+            bulk_insert(cursor, "water_quality_records", cols, batch)
             conn.commit()
             
     print(f"Finished Water Quality: {count} rows in {time.time() - start:.2f}s")
 
 def main():
     print(f"Master CSV Location: {DATASET_DIR}")
-    print(f"Target Database File: {DB_PATH}")
+    print(f"Active DB Engine: {engine.url}")
     
-    if os.path.exists(DB_PATH):
-        print("Existing fallback database found. Overwriting...")
-        try:
-            os.remove(DB_PATH)
-        except Exception as e:
-            print(f"Could not remove database file (is the server running?): {e}")
-            return
-            
-    conn = sqlite3.connect(DB_PATH)
+    # 1. Create tables safe using SQLAlchemy
+    print("Synchronizing DB schema tables...")
+    from app.database import models
+    Base.metadata.create_all(bind=engine)
+    
+    # 2. Get connection
+    conn = engine.raw_connection()
     try:
-        # Optimized SQLite write settings
-        conn.execute("PRAGMA journal_mode = OFF")
-        conn.execute("PRAGMA synchronous = OFF")
-        conn.execute("PRAGMA cache_size = 100000")
-        
-        init_db(conn)
+        # SQLite optimization
+        if not is_pg:
+            conn.execute("PRAGMA journal_mode = OFF")
+            conn.execute("PRAGMA synchronous = OFF")
+            conn.execute("PRAGMA cache_size = 100000")
+            
+        clear_tables(conn)
         
         ingest_pincodes(conn)
         ingest_health_centres(conn)
@@ -542,9 +377,9 @@ def main():
             print("Seeding Parliamentary Constituencies from seed file...")
             seed_sqlite(conn)
         except Exception as err:
-            print(f"Failed to seed constituencies in fallback SQLite db: {err}")
+            print(f"Failed to seed constituencies in DB: {err}")
             
-        print("\n=== SUCCESS: All-India fall-back SQLite Database generated successfully! ===")
+        print("\n=== SUCCESS: All-India Local Ingestion completed successfully! ===")
     finally:
         conn.close()
 
