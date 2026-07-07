@@ -195,6 +195,9 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
     circlesLayerRef.current.clearLayers();
 
     points.forEach(p => {
+      if (!p || typeof p.lat !== 'number' || typeof p.lon !== 'number' || isNaN(p.lat) || isNaN(p.lon)) {
+        return;
+      }
       const color = getPriorityColor(p.priority);
 
       // Heat Circle

@@ -393,6 +393,74 @@ def get_heatmap_coordinates(
     except Exception as e:
         print(f"[Geo API Heatmap SQL Error] {e}")
 
+    # 3. Fetch crawled news items (scraped from the web!)
+    try:
+        from app.database.models import CrawledNews
+        news_items = db_session.query(CrawledNews).filter(
+            func.upper(CrawledNews.district_name) == district_name
+        ).all()
+        
+        # Build set of block names in the district to extract locations
+        blocks = set(h.block_name for h in all_habs if h.block_name)
+        
+        for i, item in enumerate(news_items):
+            title = item.title or ""
+            summary = item.summary or ""
+            
+            # Determine best place name to geocode
+            place = district_name
+            for b in blocks:
+                if b.lower() in title.lower() or b.lower() in summary.lower():
+                    place = b
+                    break
+                    
+            lat, lon = geocode_village_or_taluk(db_session, district_name, place)
+            
+            # Match block to get Panchayat info if possible
+            hab_match = None
+            for h in all_habs:
+                if h.block_name and h.block_name.strip().upper() == place.strip().upper():
+                    hab_match = h
+                    break
+            
+            if hab_match:
+                taluk_name = hab_match.block_name
+                panchayat_name = hab_match.panchayat_name
+            else:
+                taluk_name = f"{place} Block"
+                panchayat_name = "Gram Panchayat"
+                
+            category = normalize_complaint_category(item.category)
+            
+            priority = item.severity_score or 75
+            
+            # Avoid duplicate summaries
+            if any(c["summary"] == f"{title} — {summary}" for c in coords):
+                continue
+                
+            coords.append({
+                "id": f"crawled_news_{item.id}",
+                "lat": lat,
+                "lon": lon,
+                "intensity": float(priority) / 100.0,
+                "village": place.title(),
+                "taluk_name": taluk_name.title(),
+                "panchayat_name": panchayat_name.title(),
+                "district": district_name,
+                "state": state_name,
+                "category": category,
+                "priority": priority,
+                "summary": f"{title} — {summary}",
+                "duration": "Scraped from Web",
+                "photo_url": None,
+                "solution": f"Action required by local administration. Refer to news link: {item.link or '#'}",
+                "ai_reasoning": f"Web crawler identified this local news report as a public issue. Source: {item.source or 'Local News Portals'}.",
+                "citizen_suggestions_count": random.randint(15, 45),
+                "ai_injected": False
+            })
+    except Exception as ne:
+        print(f"[Geo API Crawled News Loading Error] {ne}")
+
     return coords
 
 
