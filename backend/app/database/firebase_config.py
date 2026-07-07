@@ -47,7 +47,7 @@ def initialize_firebase():
                     firebase_admin.initialize_app()
 
     # Get services
-    db = firestore.client()
+    db = firestore.client(database_id='default')
     try:
         bucket = storage.bucket()
     except Exception as e:
