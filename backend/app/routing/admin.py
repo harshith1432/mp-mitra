@@ -553,3 +553,67 @@ def get_quality_metadata(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── National Data Ingestion Connectors Endpoints ──────────────────────────────
+
+class RunConnectorRequest(BaseModel):
+    connector_id: str
+    source_url: str
+
+@router.get("/connectors")
+def list_ingestion_connectors(db: Session = Depends(get_db)):
+    """
+    Lists all available national portals connectors and their last run status.
+    """
+    from app.database.models import IngestionState
+    
+    available_connectors = [
+        {"id": "udise_schools", "name": "UDISE+ Schools Connector", "source": "Department of School Education & Literacy", "table": "schools"},
+        {"id": "nhm_health", "name": "NHM Clinics Connector", "source": "Ministry of Health and Family Welfare", "table": "health_centres"},
+        {"id": "pmgsy_roads", "name": "PMGSY Roads Connector", "source": "Ministry of Rural Development", "table": "roads"},
+        {"id": "jjm_water", "name": "JJM Habitations Connector", "source": "Ministry of Jal Shakti", "table": "habitations"},
+    ]
+    
+    results = []
+    for c in available_connectors:
+        state = db.query(IngestionState).filter_by(key=f"last_ingested_{c['id']}").first()
+        results.append({
+            **c,
+            "last_run": state.value if state else "Never",
+            "status": "ready"
+        })
+        
+    return {"status": "success", "connectors": results}
+
+
+@router.post("/connectors/run")
+def trigger_connector_ingestion(req: RunConnectorRequest, db: Session = Depends(get_db)):
+    """
+    Runs the selected connector on a background feed URL to normalize and ingest records.
+    """
+    from app.ingestion.connectors import (
+        UdiseSchoolConnector,
+        NhmHealthConnector,
+        PmgsyRoadsConnector,
+        JjmWaterConnector
+    )
+    
+    connectors_map = {
+        "udise_schools": UdiseSchoolConnector,
+        "nhm_health": NhmHealthConnector,
+        "pmgsy_roads": PmgsyRoadsConnector,
+        "jjm_water": JjmWaterConnector
+    }
+    
+    connector_cls = connectors_map.get(req.connector_id)
+    if not connector_cls:
+        raise HTTPException(status_code=400, detail=f"Invalid connector_id: {req.connector_id}")
+        
+    try:
+        connector_instance = connector_cls()
+        res = connector_instance.run_ingestion_pipeline(db, req.source_url)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
