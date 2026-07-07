@@ -1148,8 +1148,29 @@ function RecommendationsPanel({ sName, dName }) {
   const PRIORITY_BG     = { HIGH: '#FEF2F2', MID: '#FFFBEB', LOW: '#F0FDF4' };
   const PRIORITY_ICONS  = { HIGH: '🔴', MID: '🟡', LOW: '🟢' };
   const CAT_ICONS = {
-    Healthcare: '🏥', 'Water Supply': '💧', Education: '📚',
-    Roads: '🛣️', Electricity: '⚡', Connectivity: '📡', Sanitation: '🚰'
+    'Healthcare':           '🏥',
+    'Water Supply':         '💧',
+    'Education':            '🎓',
+    'Roads':                '🚧',
+    'Sanitation':           '🚮',
+    'Electricity':          '⚡',
+    'Connectivity':         '💻',
+    'Agriculture':          '🌾',
+    'Employment':           '💼',
+    'Housing':              '🏠',
+    'Environment':          '🌳',
+    'Women & Child':        '👩',
+    'Senior Citizens':      '👴',
+    'Disability':           '♿',
+    'Public Safety':        '🚓',
+    'Disaster Management':  '🌪️',
+    'Urban Development':    '🏙️',
+    'Rural Development':    '🌾',
+    'Public Transport':     '🚌',
+    'Tourism':              '🏛️',
+    'Sports':               '⚽',
+    'Markets':              '🛒',
+    'Governance':           '📑',
   };
 
   const fetchData = React.useCallback(async (priority, cat) => {
@@ -1255,7 +1276,11 @@ function RecommendationsPanel({ sName, dName }) {
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: '36px', marginBottom: '14px' }}>⏳</div>
             <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 600 }}>Scanning infrastructure database for {dName}…</div>
-            <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '6px' }}>Schools · Roads · Health Centres · Water Records · Citizen Complaints</div>
+            <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '6px' }}>
+              Roads · Water · Health · Education · Electricity · Sanitation
+              · Agriculture · Employment · Housing · Environment
+              · Women &amp; Child · Safety · Disaster · Transport · Governance…
+            </div>
           </div>
         )}
 

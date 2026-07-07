@@ -40,13 +40,29 @@ MID_THRESHOLD  = 40     # score 40-69  → MID
 # ─── Category colour map ─────────────────────────────────────────────────────
 
 CATEGORY_META = {
-    "Healthcare":   {"color": "#C62B2B", "scheme": "National Health Mission (NHM)",   "icon": "🏥"},
-    "Water Supply": {"color": "#003B7A", "scheme": "Jal Jeevan Mission (JJM)",        "icon": "💧"},
-    "Education":    {"color": "#FF6B1A", "scheme": "Samagra Shiksha Abhiyan",          "icon": "📚"},
-    "Roads":        {"color": "#138808", "scheme": "PMGSY Phase III",                  "icon": "🛣️"},
-    "Sanitation":   {"color": "#7B2FBE", "scheme": "Swachh Bharat Mission",            "icon": "🚰"},
-    "Electricity":  {"color": "#D97706", "scheme": "Pradhan Mantri Sahaj Bijli Yojana","icon": "⚡"},
-    "Connectivity": {"color": "#0891B2", "scheme": "BharatNet Phase II",               "icon": "📡"},
+    "Healthcare":           {"color": "#C62B2B", "scheme": "National Health Mission (NHM)",              "icon": "🏥"},
+    "Water Supply":        {"color": "#003B7A", "scheme": "Jal Jeevan Mission (JJM)",                  "icon": "💧"},
+    "Education":           {"color": "#FF6B1A", "scheme": "Samagra Shiksha Abhiyan",                    "icon": "🎓"},
+    "Roads":               {"color": "#138808", "scheme": "PMGSY Phase III",                            "icon": "🚧"},
+    "Sanitation":          {"color": "#7B2FBE", "scheme": "Swachh Bharat Mission",                      "icon": "🚮"},
+    "Electricity":         {"color": "#D97706", "scheme": "PM Sahaj Bijli Har Ghar Yojana",             "icon": "⚡"},
+    "Connectivity":        {"color": "#0891B2", "scheme": "BharatNet Phase II",                         "icon": "💻"},
+    "Agriculture":         {"color": "#65A30D", "scheme": "PM Kisan Samman Nidhi / PMFBY",             "icon": "🌾"},
+    "Employment":          {"color": "#7C3AED", "scheme": "MGNREGS / Skill India Mission",              "icon": "💼"},
+    "Housing":             {"color": "#B45309", "scheme": "Pradhan Mantri Awas Yojana (PMAY)",          "icon": "🏠"},
+    "Environment":         {"color": "#15803D", "scheme": "CAMPA / Green India Mission",               "icon": "🌳"},
+    "Women & Child":       {"color": "#DB2777", "scheme": "Mission Shakti / Poshan 2.0",               "icon": "👩"},
+    "Senior Citizens":     {"color": "#78350F", "scheme": "Integrated Programme for Older Persons",    "icon": "👴"},
+    "Disability":          {"color": "#0369A1", "scheme": "Accessible India (Sugamya Bharat)",          "icon": "♿"},
+    "Public Safety":       {"color": "#991B1B", "scheme": "CCTNS / Safe City Programme",               "icon": "🚓"},
+    "Disaster Management": {"color": "#92400E", "scheme": "NDRF / SDRF Disaster Relief Fund",          "icon": "🌪️"},
+    "Urban Development":   {"color": "#1D4ED8", "scheme": "Smart Cities / AMRUT 2.0",                  "icon": "🏙️"},
+    "Rural Development":   {"color": "#166534", "scheme": "RURBAN Mission / PURA",                     "icon": "🌾"},
+    "Public Transport":    {"color": "#0F766E", "scheme": "National Urban Transport Policy",            "icon": "🚌"},
+    "Tourism":             {"color": "#C2410C", "scheme": "Swadesh Darshan / PRASHAD",                 "icon": "🏛️"},
+    "Sports":              {"color": "#4338CA", "scheme": "Khelo India / NSDC",                        "icon": "⚽"},
+    "Markets":             {"color": "#854D0E", "scheme": "eNAM / Gramin Haat Programme",              "icon": "🛒"},
+    "Governance":          {"color": "#374151", "scheme": "Digital India / e-Gram Swaraj",             "icon": "📑"},
 }
 
 
@@ -465,35 +481,396 @@ def _build_recommendations(
                 **CATEGORY_META["Roads"],
             })
 
-        # Internet/CSC gap
-        if va.internet_cafe_csc and va.internet_cafe_csc.strip().lower() in ("no", "0", "none", ""):
-            score = _pct(35 + min(20, pop / 600))
+        # Sanitation / drainage gap
+        if va.closed_drainage and va.closed_drainage.strip().lower() in ("no", "0", "none", "") \
+           and va.open_drainage and va.open_drainage.strip().lower() in ("no", "0", "none", ""):
+            san_cc = _count_complaints_for("sanitation", complaint_counts) + \
+                     _count_complaints_for("drainage", complaint_counts) + \
+                     _count_complaints_for("toilet", complaint_counts) + \
+                     _count_complaints_for("waste", complaint_counts)
+            score = _pct(55 + min(25, pop / 600) + min(20, san_cc * 0.5))
             recs.append({
-                "id": f"conn_{va.id}",
-                "title": f"Set Up CSC / BharatNet Node — {vname}",
-                "category": "Connectivity",
+                "id": f"san_{va.id}",
+                "title": f"Build Drainage Network & Sanitation Facility — {vname}",
+                "category": "Sanitation",
                 "village": vname,
                 "location": f"{vname}, {va.sub_district or district}, {district.title()}, {state.title()}",
                 "problem": (
-                    f"{vname} ({pop:,} residents) has no internet/CSC facility. "
-                    f"Citizens cannot access government e-services or digital banking."
+                    f"{vname} ({pop:,} residents) has no closed or open drainage system per Census records. "
+                    f"Waste water pools near homes causing disease and contamination."
                 ),
                 "why_chosen": (
-                    f"Census data confirms no Common Service Centre (CSC) or internet in {vname}. "
-                    f"Digital exclusion blocks welfare delivery."
+                    f"Census amenities data confirms no drainage infrastructure. "
+                    f"Open defecation and stagnant water are leading causes of diarrhoeal disease."
                 ),
                 "how_to_fix": (
-                    f"Establish 1 CSC with BharatNet OFC connectivity and train a village-level "
-                    f"digital entrepreneur (VLE) under Digital India."
+                    f"Construct covered drainage channels, install community toilets and "
+                    f"biogas plants under Swachh Bharat Mission Phase II."
                 ),
-                "citizen_complaints": 0,
+                "citizen_complaints": san_cc,
                 "beneficiaries": pop,
                 "score": score,
                 "priority": _priority_label(score),
                 "priority_color": _priority_color(_priority_label(score)),
-                "estimated_cost_lakh": 3.5,
-                **CATEGORY_META["Connectivity"],
+                "estimated_cost_lakh": max(8, round(pop / 300 * 5, 1)),
+                **CATEGORY_META["Sanitation"],
             })
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 6–23. COMPLAINT-DRIVEN DOMAIN RECOMMENDATIONS (citizen voice signals)
+    # Generated for all remaining 17 domains using Firestore category counts.
+    # One aggregated district-level recommendation per domain if signals exist.
+    # ─────────────────────────────────────────────────────────────────────────
+
+    COMPLAINT_DOMAIN_MAP = [
+        {
+            "id": "agriculture_district",
+            "cat": "Agriculture",
+            "keywords": ["agriculture", "farm", "crop", "irrigation", "kisan", "soil"],
+            "title": f"Strengthen Agricultural Support — {district.title()}",
+            "problem": (
+                f"Farmers in {district.title()} are facing issues with crop support, irrigation access, "
+                f"and soil health. Inadequate cold storage and market linkage reduce farm income."
+            ),
+            "why_chosen": (
+                f"Citizen complaint signals highlight agricultural distress. "
+                f"PM-KISAN beneficiary outreach and Soil Health Card coverage need improvement."
+            ),
+            "how_to_fix": (
+                f"Establish irrigation canals from nearest dam, distribute Soil Health Cards, "
+                f"set up a Farmer Producer Organisation (FPO) and cold storage hub under PMKSY."
+            ),
+            "estimated_cost_lakh": 120,
+            "beneficiaries_per_complaint": 200,
+        },
+        {
+            "id": "employment_district",
+            "cat": "Employment",
+            "keywords": ["employment", "job", "work", "livelihood", "skill", "labour", "unemployment"],
+            "title": f"Skill Development Centre & Employment Drive — {district.title()}",
+            "problem": (
+                f"High unemployment and lack of vocational training are forcing youth migration "
+                f"out of {district.title()}. Women's workforce participation is below state average."
+            ),
+            "why_chosen": (
+                f"Citizen complaints reflect joblessness and lack of skill training opportunities. "
+                f"MGNREGA job-card utilisation is low, indicating supply-demand mismatch."
+            ),
+            "how_to_fix": (
+                f"Set up a Skill India hub with courses in construction, IT, and textile. "
+                f"Organise employment fairs with district industries and PSUs."
+            ),
+            "estimated_cost_lakh": 45,
+            "beneficiaries_per_complaint": 300,
+        },
+        {
+            "id": "housing_district",
+            "cat": "Housing",
+            "keywords": ["house", "housing", "shelter", "awas", "homeless", "pucca"],
+            "title": f"PMAY Housing Allocation Drive — {district.title()}",
+            "problem": (
+                f"A significant portion of households in {district.title()} still live in kutcha "
+                f"(temporary) structures without proper roofing, sanitation, or water connections."
+            ),
+            "why_chosen": (
+                f"Citizen voice data indicates unmet housing demand. Many eligible families "
+                f"are not registered under Pradhan Mantri Awas Yojana."
+            ),
+            "how_to_fix": (
+                f"Conduct door-to-door PMAY enrollment camps, fast-track beneficiary verification, "
+                f"and assign construction supervisors for quality monitoring."
+            ),
+            "estimated_cost_lakh": 250,
+            "beneficiaries_per_complaint": 150,
+        },
+        {
+            "id": "environment_district",
+            "cat": "Environment",
+            "keywords": ["environment", "pollution", "tree", "forest", "green", "waste", "plastic", "climate"],
+            "title": f"Environmental Restoration & Green Cover — {district.title()}",
+            "problem": (
+                f"Increasing deforestation, open burning of crop residue, and plastic waste "
+                f"are degrading the natural environment in {district.title()}."
+            ),
+            "why_chosen": (
+                f"Citizen complaints about pollution and waste indicate a growing environmental "
+                f"burden. Forest cover has declined in the past decade."
+            ),
+            "how_to_fix": (
+                f"Plant 50,000 trees under Green India Mission, establish community plastic "
+                f"collection points, and conduct river/lake clean-up drives with CAMPA funds."
+            ),
+            "estimated_cost_lakh": 35,
+            "beneficiaries_per_complaint": 500,
+        },
+        {
+            "id": "women_district",
+            "cat": "Women & Child",
+            "keywords": ["women", "child", "anganwadi", "poshan", "nutrition", "girl", "maternity", "mahila"],
+            "title": f"Women Empowerment & Child Nutrition Drive — {district.title()}",
+            "problem": (
+                f"Anganwadi centres in {district.title()} are understaffed and under-resourced. "
+                f"Child malnutrition and teenage anaemia rates are above national average."
+            ),
+            "why_chosen": (
+                f"Citizen data highlights inadequate anganwadi services and ICDS coverage gaps. "
+                f"NFHS-5 data shows persistent stunting and wasting in the district."
+            ),
+            "how_to_fix": (
+                f"Upgrade all anganwadi centres with weighing scales, supplementary nutrition, "
+                f"and trained helpers. Conduct Poshan Maah drives and SHG mobilisation."
+            ),
+            "estimated_cost_lakh": 60,
+            "beneficiaries_per_complaint": 400,
+        },
+        {
+            "id": "seniors_district",
+            "cat": "Senior Citizens",
+            "keywords": ["senior", "elderly", "pension", "old age", "aged", "vridha"],
+            "title": f"Senior Citizen Support Services — {district.title()}",
+            "problem": (
+                f"Elderly citizens in {district.title()} face inadequate pension coverage, "
+                f"limited mobile health camps, and no daycare facilities."
+            ),
+            "why_chosen": (
+                f"Citizen complaints from senior citizens include pension delays and lack of "
+                f"healthcare access. Isolation and financial insecurity are major concerns."
+            ),
+            "how_to_fix": (
+                f"Establish Senior Citizen Resource Centres with medical camps, legal aid, "
+                f"and mobile pension disbursement under NSAP."
+            ),
+            "estimated_cost_lakh": 25,
+            "beneficiaries_per_complaint": 200,
+        },
+        {
+            "id": "disability_district",
+            "cat": "Disability",
+            "keywords": ["disability", "handicapped", "accessible", "ramp", "divyang", "blind", "deaf"],
+            "title": f"Accessible Infrastructure for Persons with Disabilities — {district.title()}",
+            "problem": (
+                f"Government buildings, schools, and public spaces in {district.title()} lack "
+                f"wheelchair ramps, audio signals, and accessible toilets for PwDs."
+            ),
+            "why_chosen": (
+                f"Accessible India campaign targets 100% accessibility in public buildings. "
+                f"PwD community complaints indicate exclusion from essential services."
+            ),
+            "how_to_fix": (
+                f"Install ramps, tactile paths, accessible toilets, and audio signal systems "
+                f"in all government buildings under Sugamya Bharat Abhiyan."
+            ),
+            "estimated_cost_lakh": 18,
+            "beneficiaries_per_complaint": 300,
+        },
+        {
+            "id": "safety_district",
+            "cat": "Public Safety",
+            "keywords": ["safety", "crime", "police", "accident", "theft", "violence", "security", "cctv"],
+            "title": f"Public Safety Infrastructure — {district.title()}",
+            "problem": (
+                f"Inadequate street lighting, limited police patrolling, and absence of CCTV coverage "
+                f"make public spaces unsafe in {district.title()}, especially at night."
+            ),
+            "why_chosen": (
+                f"Citizen safety complaints point to crime hotspots and underlit roads. "
+                f"Road accident rates above district average."
+            ),
+            "how_to_fix": (
+                f"Install LED street lights on all major roads, add CCTV surveillance cameras "
+                f"at key junctions and police outposts under Safe City programme."
+            ),
+            "estimated_cost_lakh": 55,
+            "beneficiaries_per_complaint": 800,
+        },
+        {
+            "id": "disaster_district",
+            "cat": "Disaster Management",
+            "keywords": ["flood", "disaster", "cyclone", "drought", "relief", "calamity", "earthquake", "fire"],
+            "title": f"Disaster Preparedness & Relief Infrastructure — {district.title()}",
+            "problem": (
+                f"{district.title()} is vulnerable to monsoon flooding and drought cycles. "
+                f"Evacuation routes are unpaved and community shelters are absent."
+            ),
+            "why_chosen": (
+                f"Citizen distress calls during floods/drought indicate gaps in early warning "
+                f"systems and relief distribution logistics."
+            ),
+            "how_to_fix": (
+                f"Build 5 community disaster shelters, establish early-warning SMS systems, "
+                f"train 2 NDRF-certified village response teams per block under SDRF funding."
+            ),
+            "estimated_cost_lakh": 80,
+            "beneficiaries_per_complaint": 1000,
+        },
+        {
+            "id": "urban_district",
+            "cat": "Urban Development",
+            "keywords": ["urban", "town", "municipality", "smart city", "sewage", "city", "ward"],
+            "title": f"Urban Renewal & AMRUT Services — {district.title()}",
+            "problem": (
+                f"Urban wards in {district.title()} lack proper sewage treatment, solid waste "
+                f"management, and pedestrian-friendly roads under AMRUT 2.0 standards."
+            ),
+            "why_chosen": (
+                f"Urban citizen complaints point to poor drainage, overflowing garbage, and "
+                f"missing sidewalks. Town planning violations are frequent."
+            ),
+            "how_to_fix": (
+                f"Modernise STP (sewage treatment plant), deploy door-to-door waste collection, "
+                f"and widen footpaths under AMRUT 2.0 municipal funding."
+            ),
+            "estimated_cost_lakh": 200,
+            "beneficiaries_per_complaint": 600,
+        },
+        {
+            "id": "rural_district",
+            "cat": "Rural Development",
+            "keywords": ["rural", "village", "gram", "panchayat", "block", "development", "backward"],
+            "title": f"Rural Area Development — {district.title()}",
+            "problem": (
+                f"Backward villages in {district.title()} lack basic amenities like community halls, "
+                f"libraries, and gram sabha infrastructure for local governance."
+            ),
+            "why_chosen": (
+                f"Citizen complaints from gram panchayat members highlight administrative "
+                f"infrastructure gaps. RURBAN cluster development is underutilised."
+            ),
+            "how_to_fix": (
+                f"Build multipurpose gram panchayat bhavans, digitise land records, and "
+                f"fund rural connectivity through PURA-RURBAN Mission."
+            ),
+            "estimated_cost_lakh": 40,
+            "beneficiaries_per_complaint": 400,
+        },
+        {
+            "id": "transport_district",
+            "cat": "Public Transport",
+            "keywords": ["bus", "transport", "auto", "rickshaw", "train", "station", "commute", "route"],
+            "title": f"Public Bus Service Expansion — {district.title()}",
+            "problem": (
+                f"Many villages in {district.title()} have no regular bus service. "
+                f"Residents walk 5–12 km to reach the nearest bus stop or railway station."
+            ),
+            "why_chosen": (
+                f"Citizen complaints about lack of transport access particularly affect "
+                f"students, daily-wage workers, and women accessing healthcare."
+            ),
+            "how_to_fix": (
+                f"Add 5 new government bus routes serving remote blocks, establish mini-bus "
+                f"services for last-mile connectivity under state transport scheme."
+            ),
+            "estimated_cost_lakh": 70,
+            "beneficiaries_per_complaint": 500,
+        },
+        {
+            "id": "tourism_district",
+            "cat": "Tourism",
+            "keywords": ["tourism", "heritage", "temple", "monument", "tourist", "pilgrimage", "culture"],
+            "title": f"Heritage & Tourism Infrastructure Development — {district.title()}",
+            "problem": (
+                f"Cultural sites and religious heritage spots in {district.title()} lack basic "
+                f"tourist facilities: signage, clean toilets, lighting, and access roads."
+            ),
+            "why_chosen": (
+                f"Tourism potential is untapped due to poor infrastructure. Domestic tourists "
+                f"avoid sites due to poor hygiene and connectivity."
+            ),
+            "how_to_fix": (
+                f"Develop tourist facilities (parking, signage, toilets, lighting) at top 3 "
+                f"heritage sites under Swadesh Darshan 2.0 / PRASHAD scheme."
+            ),
+            "estimated_cost_lakh": 90,
+            "beneficiaries_per_complaint": 1000,
+        },
+        {
+            "id": "sports_district",
+            "cat": "Sports",
+            "keywords": ["sports", "playground", "youth", "stadium", "gym", "khelo", "cricket", "kabaddi"],
+            "title": f"Sports Infrastructure & Youth Programme — {district.title()}",
+            "problem": (
+                f"Youth in {district.title()} lack access to sports grounds, gymnasiums, and "
+                f"coaching academies. School sports programmes are severely underfunded."
+            ),
+            "why_chosen": (
+                f"Youth complaints point to lack of recreational and sports facilities. "
+                f"Khelo India district sports talent scouting is absent."
+            ),
+            "how_to_fix": (
+                f"Build a multipurpose sports ground with floodlights, recruit 3 district sports "
+                f"coaches, and host Khelo India talent identification camps."
+            ),
+            "estimated_cost_lakh": 50,
+            "beneficiaries_per_complaint": 300,
+        },
+        {
+            "id": "markets_district",
+            "cat": "Markets",
+            "keywords": ["market", "shop", "bazaar", "haat", "trader", "vendor", "price", "mandi"],
+            "title": f"Rural Market & Agri-Haat Development — {district.title()}",
+            "problem": (
+                f"Small traders and farmers in {district.title()} lack regulated market spaces. "
+                f"Informal vendors face harassment; farmers sell produce below MSP."
+            ),
+            "why_chosen": (
+                f"Citizen complaints from market vendors and farmers indicate absence of "
+                f"transparent Mandi/eNAM linkage and clean storage infrastructure."
+            ),
+            "how_to_fix": (
+                f"Develop 3 Gramin Haats with pucca stalls, cold storage, and eNAM digital "
+                f"integration. Train farmers on MSP procurement process."
+            ),
+            "estimated_cost_lakh": 65,
+            "beneficiaries_per_complaint": 400,
+        },
+        {
+            "id": "governance_district",
+            "cat": "Governance",
+            "keywords": ["governance", "certificate", "ration", "document", "office", "official", "caste", "bpl", "corruption", "ration card"],
+            "title": f"Digital Governance & e-Services Outreach — {district.title()}",
+            "problem": (
+                f"Citizens in {district.title()} face delays in obtaining government certificates, "
+                f"ration cards, and BPL/caste documents due to manual, non-digital processes."
+            ),
+            "why_chosen": (
+                f"Governance complaints are among the top citizen concerns — including delays "
+                f"in document issuance, pension, and scheme enrollment."
+            ),
+            "how_to_fix": (
+                f"Digitalise all front-facing services via CSC-enabled Jan Sewa Kendras, "
+                f"deploy mobile government camps to remote villages monthly."
+            ),
+            "estimated_cost_lakh": 20,
+            "beneficiaries_per_complaint": 600,
+        },
+    ]
+
+    for domain in COMPLAINT_DOMAIN_MAP:
+        cc = sum(_count_complaints_for(kw, complaint_counts) for kw in domain["keywords"])
+        if cc == 0:
+            # Still generate a LOW recommendation if data exists in DB (amenities coverage check)
+            cc = 0
+            base_score = 30
+        else:
+            base_score = min(95, 35 + cc * 8)
+        score = _pct(base_score)
+        recs.append({
+            "id": domain["id"],
+            "title": domain["title"],
+            "category": domain["cat"],
+            "village": district.title(),
+            "location": f"{district.title()}, {state.title()}",
+            "problem": domain["problem"],
+            "why_chosen": domain["why_chosen"],
+            "how_to_fix": domain["how_to_fix"],
+            "citizen_complaints": cc,
+            "beneficiaries": cc * domain.get("beneficiaries_per_complaint", 200),
+            "score": score,
+            "priority": _priority_label(score),
+            "priority_color": _priority_color(_priority_label(score)),
+            "estimated_cost_lakh": domain["estimated_cost_lakh"],
+            **CATEGORY_META[domain["cat"]],
+        })
 
     # ─────────────────────────────────────────────────────────────────────────
     # Sort by score descending, deduplicate IDs
