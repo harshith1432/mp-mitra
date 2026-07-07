@@ -203,15 +203,30 @@ def get_heatmap_coordinates(
 
     # 1. Fetch AI recommendations (with a timeout to avoid hanging on Firestore)
     try:
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_build_recommendations, state_name, district_name, db_session)
+        import threading
+        _result_box = [None]
+        _err_box    = [None]
+
+        def _run_recs():
             try:
-                ai_recs = future.result(timeout=15)  # 15-second cap
-            except concurrent.futures.TimeoutError:
-                print("[Geo API] _build_recommendations timed out – skipping AI recs for now")
-                ai_recs = []
-        
+                _result_box[0] = _build_recommendations(state_name, district_name, db_session)
+            except Exception as exc:
+                _err_box[0] = exc
+
+        _t = threading.Thread(target=_run_recs, daemon=True)
+        _t.start()
+        _t.join(timeout=15)            # wait at most 15 seconds
+
+        if _t.is_alive():
+            # Still running — timed out
+            print("[Geo API] _build_recommendations timed out – skipping AI recs this request")
+            ai_recs = []
+        elif _err_box[0]:
+            print(f"[Geo API AI Rec Thread Error] {_err_box[0]}")
+            ai_recs = []
+        else:
+            ai_recs = _result_box[0] or []
+
         for i, rec in enumerate(ai_recs):
             rec_village_upper = rec["village"].strip().upper()
             hab_match = hab_lookup.get(rec_village_upper)
