@@ -62,20 +62,28 @@ def normalize_complaint_category(raw_cat: str) -> str:
     return "Governance & Public Services"
 
 def geocode_village_or_taluk(db_session, district_name: str, place_name: str) -> tuple:
+    """
+    Geocode a village/taluk/place name within a district.
+    Priority:
+      1. School table (UDISE GPS — most accurate)
+      2. HealthCentre table (NHM GPS)
+      3. Habitation table → nearest school in same village
+      4. Nominatim OSM API (real geocoding for unknown villages like "Katteri")
+      5. Pincode table district centroid (fixed, no noise)
+    """
     import math
     place_upper = place_name.strip().upper()
     cache_key = f"{district_name}_{place_upper}"
     if cache_key in _GEOCODE_CACHE:
         return _GEOCODE_CACHE[cache_key]
-        
-    # Helper to save and return
+
     def save_cache(lat, lon):
         if lat is None or lon is None or math.isnan(lat) or math.isnan(lon):
-            return 20.5937, 78.9629
+            return 12.5244, 76.8961  # Mandya town default
         _GEOCODE_CACHE[cache_key] = (lat, lon)
         return lat, lon
-    
-    # 1. Search schools for this village
+
+    # 1. School table (best accuracy — UDISE GPS)
     school = db_session.query(School).filter(
         func.upper(School.district_name) == district_name,
         func.upper(School.village_name) == place_upper,
@@ -84,8 +92,8 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
     ).first()
     if school and school.latitude and not math.isnan(school.latitude) and school.longitude and not math.isnan(school.longitude):
         return save_cache(school.latitude, school.longitude)
-        
-    # 2. Search health centres
+
+    # 2. Health centre table
     hc = db_session.query(HealthCentre).filter(
         func.upper(HealthCentre.district_name) == district_name,
         func.upper(HealthCentre.subdistrict_name) == place_upper,
@@ -95,7 +103,7 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
     if hc and hc.latitude and not math.isnan(hc.latitude) and hc.longitude and not math.isnan(hc.longitude):
         return save_cache(hc.latitude, hc.longitude)
 
-    # 3. Search habitations block/village and fetch any nearby school coordinates in same block/village
+    # 3. Habitation table → find nearest school in same village
     hab = db_session.query(Habitation).filter(
         func.upper(Habitation.district_name) == district_name,
         (func.upper(Habitation.village_name) == place_upper) |
@@ -109,37 +117,47 @@ def geocode_village_or_taluk(db_session, district_name: str, place_name: str) ->
             School.latitude.isnot(None),
             School.latitude != 0.0
         ).first()
-        if school_near and school_near.latitude and not math.isnan(school_near.latitude) and school_near.longitude and not math.isnan(school_near.longitude):
+        if school_near and school_near.latitude and not math.isnan(school_near.latitude):
             return save_cache(school_near.latitude, school_near.longitude)
 
-    # 4. Generic DB-driven district centroid as fallback
-    # Try to find any school or health centre in the district with valid coordinates
-    any_school = db_session.query(School).filter(
-        func.upper(School.district_name) == district_name,
-        School.latitude.isnot(None),
-        School.latitude != 0.0
-    ).limit(50).all()
-    if any_school:
-        import statistics
-        lats = [s.latitude for s in any_school if s.latitude and not math.isnan(s.latitude)]
-        lons = [s.longitude for s in any_school if s.longitude and not math.isnan(s.longitude)]
-        if lats and lons:
-            return save_cache(
-                statistics.mean(lats) + random.uniform(-0.2, 0.2),
-                statistics.mean(lons) + random.uniform(-0.2, 0.2)
-            )
+    # 4. Nominatim OSM — real geocoding for village names not in DB (e.g. "Katteri")
+    try:
+        nm_query = f"{place_name.title()}, {district_name.title()} district, Karnataka, India"
+        nm_url = "https://nominatim.openstreetmap.org/search"
+        nm_params = {"q": nm_query, "format": "json", "limit": 1, "countrycodes": "in"}
+        nm_headers = {"User-Agent": "mp_mitra_platform_v2_geocoder"}
+        nm_resp = requests.get(nm_url, params=nm_params, headers=nm_headers, timeout=6)
+        if nm_resp.ok:
+            nm_data = nm_resp.json()
+            if nm_data:
+                nm_lat = float(nm_data[0]["lat"])
+                nm_lon = float(nm_data[0]["lon"])
+                if not math.isnan(nm_lat) and nm_lat != 0.0:
+                    return save_cache(nm_lat, nm_lon)
+    except Exception as nm_e:
+        print(f"[Geocoder] Nominatim failed for '{place_name}': {nm_e}")
 
-    # 5. Search pincodes table as general fallback
+    # 5. Fixed district centroid from Pincode table (NO random noise)
     ref = db_session.query(Pincode).filter(
         func.upper(Pincode.district) == district_name,
         Pincode.latitude.isnot(None),
         Pincode.latitude != 0.0
     ).first()
-    if ref and ref.latitude and not math.isnan(ref.latitude) and ref.longitude and not math.isnan(ref.longitude):
-        return save_cache(ref.latitude + random.uniform(-0.15, 0.15), ref.longitude + random.uniform(-0.15, 0.15))
-            
-    # 6. Absolute geographic centre of India as last resort
-    return save_cache(20.5937 + random.uniform(-1.0, 1.0), 78.9629 + random.uniform(-1.0, 1.0))
+    if ref and ref.latitude and not math.isnan(ref.latitude):
+        return save_cache(ref.latitude, ref.longitude)
+
+    # 6. Hard-coded Karnataka district centres as last resort
+    DISTRICT_FALLBACKS = {
+        "MANDYA": (12.5244, 76.8961),
+        "MYSURU": (12.2958, 76.6394),
+        "BENGALURU": (12.9716, 77.5946),
+        "TUMKUR": (13.3392, 77.1017),
+        "HASSAN": (13.0074, 76.0962),
+    }
+    fallback = DISTRICT_FALLBACKS.get(district_name, (12.5244, 76.8961))
+    return save_cache(*fallback)
+
+
 
 
 @router.get("/reverse")
@@ -342,8 +360,8 @@ def get_heatmap_coordinates(
                     "id": f"ai_school_{s.udise_school_code}",
                     "source": "ai_deficit",
                     "source_label": "AI-Detected Deficit",
-                    "lat": s.latitude + random.uniform(-0.005, 0.005),
-                    "lon": s.longitude + random.uniform(-0.005, 0.005),
+                    "lat": s.latitude,
+                    "lon": s.longitude,
                     "intensity": priority / 100.0,
                     "village": (s.village_name or "Unknown Village").title(),
                     "taluk_name": (s.sub_district_name or "Unknown Block").title(),
@@ -377,8 +395,8 @@ def get_heatmap_coordinates(
                     "id": f"ai_health_{hc.id}",
                     "source": "ai_deficit",
                     "source_label": "AI-Detected Deficit",
-                    "lat": hc.latitude + random.uniform(-0.005, 0.005),
-                    "lon": hc.longitude + random.uniform(-0.005, 0.005),
+                    "lat": hc.latitude,
+                    "lon": hc.longitude,
                     "intensity": priority / 100.0,
                     "village": (hc.subdistrict_name or "Unknown Area").title(),
                     "taluk_name": (hc.subdistrict_name or "Unknown Block").title(),

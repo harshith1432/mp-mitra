@@ -30,6 +30,8 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [mapType, setMapType] = useState('voyager'); // 'voyager' | 'satellite' | 'terrain' | 'bhuvan'
   const [mapReady, setMapReady] = useState(false); // true once Leaflet instance + layer groups are created
+  const [lastUpdated, setLastUpdated] = useState(null); // timestamp of last successful fetch
+  const [sourceStats, setSourceStats] = useState({ citizen: 0, whatsapp: 0, ai: 0, news: 0 });
   
   const [searchQuery, setSearchQuery] = useState('');
   const [streetViewActive, setStreetViewActive] = useState(false);
@@ -117,34 +119,10 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
   const [loadingPoints, setLoadingPoints] = useState(false);
   const retryTimerRef = useRef(null);
 
-  // Generate realistic demo markers around the district center so map is never empty
-  const generateDemoPoints = (state, district) => {
-    const center = getDistrictCenter(state, district);
-    const [cLat, cLon] = center;
-    const cats = ['Roads & Transport', 'Drinking Water', 'Healthcare', 'Education', 'Electricity', 'Sanitation & Waste Management'];
-    const villages = [`${district} Town`, `North ${district}`, `South ${district}`, `East ${district}`, `West ${district}`, `${district} Rural`];
-    return cats.map((cat, i) => ({
-      id: `demo_${i}`,
-      lat: cLat + (Math.random() - 0.5) * 0.4,
-      lon: cLon + (Math.random() - 0.5) * 0.4,
-      intensity: 0.75,
-      village: villages[i] || district,
-      taluk_name: `${district} Block`,
-      panchayat_name: 'Gram Panchayat',
-      district: district,
-      state: state,
-      category: cat,
-      priority: [88, 91, 75, 82, 68, 95][i] || 75,
-      summary: `Citizens have reported infrastructure deficit in ${cat} in this area. AI analysis recommends urgent attention.`,
-      duration: 'AI Flagged',
-      photo_url: null,
-      solution: 'Deploy district engineering team. Allocate targeted budget from Central/State scheme.',
-      ai_reasoning: 'Database analysis shows service gap in this locality.',
-      citizen_suggestions_count: [12, 8, 22, 15, 6, 18][i] || 10,
-      ai_injected: true,
-      isDemo: true
-    }));
-  };
+  // No fake demo points — if backend is down we show nothing and keep retrying
+
+
+  const autoRefreshRef = useRef(null);
 
   const fetchPoints = (retryCount = 0) => {
     setLoadingPoints(true);
@@ -157,41 +135,50 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
       })
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
-          setPoints(data);
-        } else {
-          // Backend responded but returned empty — show demo points
-          setPoints(generateDemoPoints(activeState, activeDistrict));
+          // Filter out any points with invalid coordinates
+          const validPoints = data.filter(p => p && typeof p.lat === 'number' && typeof p.lon === 'number' && !isNaN(p.lat) && !isNaN(p.lon) && p.lat !== 0 && p.lon !== 0);
+          setPoints(validPoints);
+          setLastUpdated(new Date());
+          // Compute source stats for legend counter
+          setSourceStats({
+            citizen: validPoints.filter(p => p.source === 'citizen_complaint').length,
+            whatsapp: validPoints.filter(p => p.source === 'whatsapp_report').length,
+            ai: validPoints.filter(p => p.source === 'ai_deficit').length,
+            news: validPoints.filter(p => p.source === 'scraped_news').length,
+          });
         }
+        // If empty array returned, keep existing points and retry silently
         setLoadingPoints(false);
         if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       })
       .catch(err => {
         console.warn(`[Map] Fetch attempt ${retryCount + 1} failed: ${err.message}`);
-        if (retryCount === 0) {
-          // Show demo points immediately so the map is never blank
-          setPoints(generateDemoPoints(activeState, activeDistrict));
-          setLoadingPoints(false);
-        }
         // Retry up to 8 times with exponential backoff (2s, 4s, 8s, 16s…)
         if (retryCount < 8) {
           const delay = Math.min(2000 * Math.pow(2, retryCount), 30000);
           console.log(`[Map] Retrying in ${delay / 1000}s…`);
           retryTimerRef.current = setTimeout(() => fetchPoints(retryCount + 1), delay);
+        } else {
+          setLoadingPoints(false);
         }
       });
   };
 
-  // Clear retry timer on unmount
+  // Clear retry timer and auto-refresh on unmount
   useEffect(() => {
     return () => {
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
     };
   }, []);
 
-  // 1. Fetch geocoded points (pass both state and district so the backend returns the right data)
+  // 1. Fetch geocoded points — initial load + auto-refresh every 30 seconds for real-time updates
   useEffect(() => {
     if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
     fetchPoints(0);
+    // Auto-refresh every 30 seconds so new citizen complaints appear without page reload
+    autoRefreshRef.current = setInterval(() => fetchPoints(0), 30000);
   }, [activeDistrict, activeState]);
 
   // 2. Initialize Leaflet Map Instance — re-centre whenever district or state changes
@@ -634,8 +621,18 @@ export default function ConstituencyMap({ activeDistrict = 'Mandya', activeState
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#C62B2B', flexShrink: 0 }} /> Critical (≥ 85)</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#FB8C00', flexShrink: 0 }} /> High (70–84)</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4CAF50', flexShrink: 0 }} /> Moderate (&lt; 70)</div>
-        <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '6px', color: '#64748B', fontSize: '10px' }}>
-          {points.length > 0 ? `${points.length} issues mapped` : 'Loading map data…'}
+        <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '6px', color: '#374151', fontSize: '10px', lineHeight: '1.8' }}>
+          {loadingPoints && <div style={{ color: '#7C3AED', marginBottom: '4px' }}>⟳ Refreshing live data…</div>}
+          {sourceStats.citizen > 0 && <div>📍 {sourceStats.citizen} citizen complaint{sourceStats.citizen > 1 ? 's' : ''}</div>}
+          {sourceStats.whatsapp > 0 && <div>💬 {sourceStats.whatsapp} WhatsApp report{sourceStats.whatsapp > 1 ? 's' : ''}</div>}
+          {sourceStats.ai > 0 && <div>🤖 {sourceStats.ai} AI-detected deficit{sourceStats.ai > 1 ? 's' : ''}</div>}
+          {sourceStats.news > 0 && <div>📰 {sourceStats.news} news report{sourceStats.news > 1 ? 's' : ''}</div>}
+          {points.length === 0 && !loadingPoints && <div style={{ color: '#9CA3AF' }}>Waiting for data…</div>}
+          {lastUpdated && (
+            <div style={{ color: '#9CA3AF', marginTop: '4px', borderTop: '1px solid #F1F5F9', paddingTop: '4px' }}>
+              🕐 Updated {lastUpdated.toLocaleTimeString()} · Auto-refresh 30s
+            </div>
+          )}
         </div>
       </div>
 
