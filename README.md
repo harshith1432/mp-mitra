@@ -275,14 +275,42 @@ Built with ❤️ for the **India AI Hackathon 2026** — empowering India's 543
 
 ## 📸 Screenshots
 
-### AI Priority Map
-Real-time map showing citizen complaints (📍), WhatsApp reports (💬), AI-detected deficits (🤖), and web-scraped news (📰) at exact GPS coordinates across Mandya district, Karnataka.
+### 🗺️ AI Priority Map — Real-Time 4-Source Intelligence
+Real-time Leaflet map showing citizen complaints (📍 red), WhatsApp reports (💬 green), AI-detected infrastructure deficits (🤖 purple), and web-scraped news (📰 amber) plotted at **exact GPS coordinates** across Mandya district, Karnataka. Legend shows live source counts and auto-refresh timestamp.
 
-### Live Citizen Feed
-Real-time stream of citizen submissions from Web Kiosk and WhatsApp showing village name, category, urgency, and complaint text.
+![AI Priority Map](docs/screenshots/screenshot_map_ai_priority.png)
 
-### Active Risk Alerts
-AI-triaged alert panel showing Critical/High/Medium severity issues with population impact metrics.
+---
 
-### Budget Optimizer
-MPLADS ₹5 crore allocation optimizer with scheme matching and cost-benefit analysis per village.
+### 📋 Recommendations Dashboard — All 22 Categories
+Live priority dashboard showing **253 High Priority**, **187 Mid Priority**, **786 Low Priority** issues across all 22 governance categories. Includes the Real-Time AI Web Scraping Console with Start/Stop control.
+
+![Recommendations Dashboard](docs/screenshots/screenshot_recommendations_dashboard.png)
+
+---
+
+### 💬 WhatsApp Integration — Citizen Onboarding
+Citizens message the MP Mitra WhatsApp bot, select their preferred language (English / हिंदी / ಕನ್ನಡ), and are guided through the complaint submission flow — all without needing to install any app.
+
+![WhatsApp Welcome](docs/screenshots/screenshot_whatsapp_welcome.png)
+
+---
+
+### 📲 WhatsApp Complaint Submission — Photo + Text + Location
+A citizen from Katteri, Mandya submits a road pothole complaint with a photo via WhatsApp. The bot accepts text, voice notes, photos, videos, documents, and GPS location.
+
+![WhatsApp Submission](docs/screenshots/screenshot_whatsapp_submission.png)
+
+---
+
+### 🤖 AI Scheme Matching via WhatsApp
+After the citizen types **DONE**, the AI instantly analyzes the complaint, matches it to **Pradhan Mantri Gram Sadak Yojana (PMGSY)**, and replies with scheme benefits, eligible funding phase, and action plan — all on WhatsApp.
+
+![WhatsApp AI Response](docs/screenshots/screenshot_whatsapp_ai_response.png)
+
+---
+
+### 💰 MPLADS Budget Portfolio Optimizer
+Knapsack Integer Linear Programming optimizer for the MPLADS ₹5 crore annual allocation. Set citizen demand weight, infrastructure gap weight, and budget limit — the solver generates the optimal project portfolio with village-level cost breakdown and total beneficiary count.
+
+![Budget Optimizer](docs/screenshots/screenshot_budget_optimizer.png)
