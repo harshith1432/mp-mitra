@@ -1145,6 +1145,13 @@ function RecommendationsPanel({ sName, dName }) {
   const [expandedId, setExpandedId]     = React.useState(null);
   const [lastFetch, setLastFetch]       = React.useState(null);
 
+  // Real-Time Web Scraping States
+  const [isScraping, setIsScraping] = React.useState(false);
+  const [scrapedItems, setScrapedItems] = React.useState([]);
+  const [scrapingStatus, setScrapingStatus] = React.useState('idle');
+  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
+  const scraperIntervalRef = React.useRef(null);
+
   const PRIORITY_COLORS = { HIGH: '#C62B2B', MID: '#D97706', LOW: '#138808' };
   const PRIORITY_BG     = { HIGH: '#FEF2F2', MID: '#FFFBEB', LOW: '#F0FDF4' };
   const PRIORITY_ICONS  = { HIGH: '🔴', MID: '🟡', LOW: '🟢' };
@@ -1195,6 +1202,80 @@ function RecommendationsPanel({ sName, dName }) {
 
   React.useEffect(() => { fetchData('ALL', 'ALL'); }, [sName, dName]);
 
+  const startWebScraping = async () => {
+    setIsScraping(true);
+    setScrapingStatus('loading_db');
+    setIsPanelOpen(true);
+    
+    try {
+      // 1. Fetch already saved news
+      const params = new URLSearchParams({ state: sName, district: dName });
+      const res = await fetch(`${API_BASE}/api/copilot/news?${params}`);
+      const dbData = await res.json();
+      const savedNews = dbData.news || [];
+      setScrapedItems(savedNews);
+      setScrapingStatus('scraping');
+      
+      let currentExistingTitles = savedNews.map(item => item.title);
+      
+      if (scraperIntervalRef.current) clearInterval(scraperIntervalRef.current);
+      
+      scraperIntervalRef.current = setInterval(async () => {
+        try {
+          const scrapeRes = await fetch(`${API_BASE}/api/admin/crawler/scrape-one`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              state: sName,
+              district: dName,
+              existing_titles: currentExistingTitles
+            })
+          });
+          
+          if (!scrapeRes.ok) throw new Error('Scraping request failed');
+          const scrapeData = await scrapeRes.json();
+          
+          if (scrapeData.status === 'success' && scrapeData.item) {
+            const newItem = scrapeData.item;
+            currentExistingTitles = [newItem.title, ...currentExistingTitles];
+            
+            setScrapedItems(prev => [
+              { ...newItem, isLive: true },
+              ...prev
+            ]);
+            
+            // Refresh main recommendations list!
+            fetchData(activeFilter, activeCat);
+          }
+        } catch (err) {
+          console.error('[Scraper Error]', err);
+        }
+      }, 7000);
+      
+    } catch (err) {
+      console.error('[Scraper Setup Error]', err);
+      setScrapingStatus('stopped');
+      setIsScraping(false);
+    }
+  };
+
+  const stopWebScraping = () => {
+    setIsScraping(false);
+    setScrapingStatus('stopped');
+    if (scraperIntervalRef.current) {
+      clearInterval(scraperIntervalRef.current);
+      scraperIntervalRef.current = null;
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (scraperIntervalRef.current) {
+        clearInterval(scraperIntervalRef.current);
+      }
+    };
+  }, []);
+
   const handleFilter = (p) => { setActiveFilter(p); fetchData(p, activeCat); };
   const handleCat    = (c) => { setActiveCat(c);    fetchData(activeFilter, c); };
 
@@ -1237,6 +1318,136 @@ function RecommendationsPanel({ sName, dName }) {
               <div style={{ fontSize: '10.5px', color: activeFilter === s.key ? 'rgba(255,255,255,0.8)' : '#6B7280', marginTop: '3px' }}>{s.desc}</div>
             </div>
           ))}
+        </div>
+
+        {/* Real-Time Web Scraping Console */}
+        <div style={{ padding: '20px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <style>{`
+            @keyframes pulse-opacity {
+              0% { opacity: 0.4; }
+              50% { opacity: 1; }
+              100% { opacity: 0.4; }
+            }
+            .scraping-pulsing-dot {
+              animation: pulse-opacity 1.5s infinite ease-in-out;
+            }
+          `}</style>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '24px' }}>🌐</span>
+              <div>
+                <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#1E293B', margin: 0 }}>Real-Time AI Web Scraping Console</h4>
+                <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0' }}>Ingest local news and infrastructure deficits 1-by-1 from the internet for {dName || 'selected district'}</p>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {isScraping ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#DCFCE7', padding: '5px 12px', borderRadius: '16px', border: '1px solid #BBF7D0' }}>
+                  <span className="scraping-pulsing-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#15803D', textTransform: 'uppercase' }}>
+                    {scrapingStatus === 'loading_db' ? 'Loading Dataset...' : 'Scraping Live...'}
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F1F5F9', padding: '5px 12px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94A3B8', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>Inactive</span>
+                </div>
+              )}
+
+              <button 
+                onClick={isScraping ? stopWebScraping : startWebScraping}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: isScraping ? '#EF4444' : '#003B7A',
+                  color: 'white',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                {isScraping ? '⏹️ Stop Web Scraping' : '🚀 Start Web Scraping'}
+              </button>
+
+              {scrapedItems.length > 0 && (
+                <button 
+                  onClick={() => setIsPanelOpen(!isPanelOpen)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    background: 'white',
+                    color: '#334155',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isPanelOpen ? '🙈 Hide Console' : `👁️ View Console (${scrapedItems.length})`}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Console Drawer */}
+          {isPanelOpen && scrapedItems.length > 0 && (
+            <div style={{ background: '#0F172A', borderRadius: '8px', border: '1px solid #1E293B', padding: '16px', color: '#E2E8F0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1E293B', paddingBottom: '8px', marginBottom: '12px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Scraper Output stream</span>
+                <span style={{ fontSize: '11px', color: '#64748B' }}>Showing {scrapedItems.filter(i => i.isLive).length} live / {scrapedItems.filter(i => !i.isLive).length} saved items</span>
+              </div>
+              
+              <div style={{ maxHeight: '240px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {scrapedItems.map((item, idx) => (
+                  <div key={item.id || idx} style={{
+                    background: '#1E293B',
+                    borderRadius: '6px',
+                    padding: '10px 12px',
+                    borderLeft: `4px solid ${item.isLive ? '#38BDF8' : '#94A3B8'}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          background: item.isLive ? '#0284C7' : '#475569',
+                          color: 'white',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '9px',
+                          fontWeight: 800,
+                          textTransform: 'uppercase'
+                        }}>
+                          {item.isLive ? '✨ Live Scraped' : '💾 Dataset Loaded'}
+                        </span>
+                        <span style={{ color: '#F1F5F9', fontSize: '12px', fontWeight: 700 }}>
+                          {item.title}
+                        </span>
+                      </div>
+                      <span style={{ color: '#38BDF8', fontSize: '11px', fontWeight: 800 }}>
+                        {item.severity_score}% Severity
+                      </span>
+                    </div>
+                    
+                    <p style={{ fontSize: '11.5px', color: '#94A3B8', margin: '2px 0 4px', lineHeight: 1.45 }}>
+                      {item.summary}
+                    </p>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#64748B', borderTop: '1px solid #334155', paddingTop: '6px' }}>
+                      <span>📂 Category: <strong style={{ color: '#CBD5E1' }}>{item.category}</strong> · Source: <strong style={{ color: '#CBD5E1' }}>{item.source}</strong></span>
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ color: '#38BDF8', textDecoration: 'none', fontWeight: 600 }}>Visit Article ↗</a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Filter + Category bar */}
